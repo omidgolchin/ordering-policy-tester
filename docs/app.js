@@ -16,19 +16,36 @@
   function bw(x) { return x === null || x === undefined ? "–" : "×" + fmtN(x, 1); }
   function pct(x) { return fmtN(x * 100, 0) + "%"; }
 
+  /* Chart adapter: the page builds series as {name, color, dash, points:[{x,y}]}
+   * and the kit's Tool.lineChart takes a spec with [x, y] pairs. */
+  var EXTRA = { series3: "#7a4fb0", series4: "#2f8a5f" };
+  function chart(host, series, opts) {
+    opts = opts || {};
+    var spec = {
+      series: series.map(function (s) {
+        return { label: s.name, color: EXTRA[s.color] || s.color, dash: s.dash || undefined, width: s.width,
+          markers: s.markers, highlight: s.highlight,
+          points: s.points.map(function (p) { return [p.x, p.y]; }) };
+      }),
+      xTitle: opts.xLabel, yTitle: opts.yLabel, yMin: opts.yMin, hLines: opts.hLines, vLines: opts.vLines,
+      xFormat: opts.xFormat, yFormat: opts.yFormat, height: opts.height, legend: series.length > 1
+    };
+    Tool.lineChart(host, spec);
+  }
+
   /* ---------------- examples ---------------- */
   var EXAMPLES = [
-    { name: "The classic: demand steps up", note: "The Beer Game setup. Demand doubles in week 5 and stays there; watch what the rules do to the factory.",
+    { name: "The classic: demand steps up", note: "The Beer Game's demand: it doubles in week 5 and stays there. Watch the factory, and what sharing demand does to it.",
       set: { stage: 0, orderDelay: 1, shipDelay: 2, holdingCost: 0.5, backlogCost: 1, costModel: "backlog", serviceLevel: "0.95", demandPattern: "step", infoSharing: false, rules: ["out", "smooth", "pass"] } },
-    { name: "Steady demand, same every week", note: "Nothing ever changes. The cheap rules tie, and pass-through's steady ordering suddenly looks expensive.",
+    { name: "Steady demand, same every week", note: "Nothing ever changes, so nothing goes wrong: the chain opens in steady state and stays there. The baseline that shows the simulation starts fair.",
       set: { stage: 0, orderDelay: 1, shipDelay: 2, holdingCost: 0.5, backlogCost: 1, costModel: "backlog", serviceLevel: "0.95", demandPattern: "constant", infoSharing: false, rules: ["out", "smooth", "pass"] } },
-    { name: "Jump demand, pricey stock-outs", note: "Random demand and a $2 shortage cost: the setting where smoothing earns its keep.",
+    { name: "Noisy demand, pricey stock-outs", note: "Demand jumps around a steady mean and a shortage costs $2. The rules land close; the forecast window moves the factory more than the rule does.",
       set: { stage: 0, orderDelay: 1, shipDelay: 2, holdingCost: 0.5, backlogCost: 2, costModel: "backlog", serviceLevel: "0.95", demandPattern: "random", infoSharing: false, rules: ["out", "smooth", "pass"] } },
-    { name: "Long lead time, pricey stock-outs", note: "Five weeks of lead time and a $4 shortage cost: the order-up-to target grows, and so does the damage when it is wrong.",
+    { name: "Long lead time, pricey stock-outs", note: "Five weeks of lead time at the wholesaler and a $4 shortage cost: the step hurts for longer, and sharing demand calms the factory about tenfold.",
       set: { stage: 1, orderDelay: 2, shipDelay: 3, holdingCost: 0.5, backlogCost: 4, costModel: "backlog", serviceLevel: "0.95", demandPattern: "step", infoSharing: false, rules: ["out", "smooth", "pass"] } },
-    { name: "Unfilled orders are lost sales", note: "Seasonal demand, and a stock-out loses the sale instead of backlogging it. The best rule can change; the verdict says if it does.",
+    { name: "Unfilled orders are lost sales", note: "Seasonal demand, and a stock-out loses the sale. Smoothing edges out pass-through; under backlogs pass-through would win.",
       set: { stage: 0, orderDelay: 1, shipDelay: 2, holdingCost: 0.5, backlogCost: 1.5, costModel: "lost", serviceLevel: "0.95", demandPattern: "seasonal", infoSharing: false, rules: ["out", "smooth", "pass"] } },
-    { name: "Cheap storage, costly shortages", note: "Holding costs a dime, shortages cost $3: carry more, and let the target do the work, with the whole chain sharing demand.",
+    { name: "Cheap storage, costly shortages", note: "Holding costs a dime, shortages $3, and the whole chain shares demand: aim high and smooth lightly.",
       set: { stage: 2, orderDelay: 1, shipDelay: 2, holdingCost: 0.1, backlogCost: 3, costModel: "backlog", serviceLevel: "0.99", demandPattern: "random", infoSharing: true, rules: ["out", "smooth", "pass"] } },
     { name: "Your own demand, pasted in", note: "A jagged 36-week series pasted into the demand box: the rules are scored on exactly this path.",
       set: { stage: 0, orderDelay: 1, shipDelay: 2, holdingCost: 0.5, backlogCost: 1, costModel: "backlog", serviceLevel: "0.95", demandPattern: "custom", infoSharing: false, rules: ["out", "smooth", "pass"] } }
@@ -40,7 +57,7 @@
     setVal("stage", s.stage); setVal("orderDelay", s.orderDelay); setVal("shipDelay", s.shipDelay);
     setVal("holdingCost", s.holdingCost); setVal("backlogCost", s.backlogCost);
     setVal("costModel", s.costModel); setVal("serviceLevel", s.serviceLevel);
-    setVal("demandPattern", s.demandPattern);
+    setVal("demandPattern", s.demandPattern); setVal("forecastWeeks", s.forecastWeeks || 8);
     $("infoSharing").checked = !!s.infoSharing;
     $("ruleOut").checked = s.rules.indexOf("out") >= 0;
     $("ruleSmooth").checked = s.rules.indexOf("smooth") >= 0;
@@ -107,7 +124,8 @@
     var sd = numField("shipDelay", "Shipping delay", { min: 0, max: 8, int: true });
     var hc = numField("holdingCost", "Holding cost", { min: 0, max: 100 });
     var bc = numField("backlogCost", "Shortage cost", { min: 0, max: 100 });
-    if (od === null || sd === null || hc === null || bc === null) problems.push("a highlighted number is out of range");
+    var fw = numField("forecastWeeks", "Forecast window", { min: 1, max: 26, int: true });
+    if (od === null || sd === null || hc === null || bc === null || fw === null) problems.push("a highlighted number is out of range");
     if (od !== null && sd !== null && od + sd > 12) {
       fieldError("shipDelay", "Lead time over 12 weeks leaves a 36-week game mostly waiting; keep the total at 12 or under.");
       problems.push("the total lead time is over 12 weeks");
@@ -125,11 +143,20 @@
     return {
       problems: [],
       config: { orderDelay: od, shipDelay: sd, holdingCost: hc, backlogCost: bc,
-                costModel: $("costModel").value, infoSharing: $("infoSharing").checked,
-                serviceLevel: parseFloat($("serviceLevel").value) },
+                costModel: $("costModel").value, infoSharing: $("infoSharing").checked, forecastWeeks: fw,
+                serviceLevel: serviceLevelFor($("serviceLevel").value, hc, bc) },
       stage: parseInt($("stage").value, 10),
       pattern: pattern, seriesList: seriesList, rules: rules
     };
+  }
+
+  /* The cost-balanced service level is the newsvendor critical ratio,
+   * shortage / (shortage + holding): the in-stock chance at which one more
+   * unit of target saves as much shortage cost as it adds in holding cost. */
+  function criticalRatio(hc, bc) { return bc / (bc + hc); }
+  function serviceLevelFor(v, hc, bc) {
+    if (v !== "auto") return parseFloat(v);
+    return Math.min(0.995, Math.max(0.5, criticalRatio(hc, bc)));
   }
 
   function policiesFor(stage, pol) {
@@ -167,10 +194,17 @@
   }
   function pickRecommendation(ev, allowed) {
     var keys = allowed.slice().sort(function (a, b) { return ev.rules[a].yourCost - ev.rules[b].yourCost; });
-    var best = keys[0];
-    var tie = keys.length > 1 && ev.rules[keys[1]].yourCost <= ev.rules[best].yourCost * 1.02;
-    var cls = ev.rules[best].fillRate < 0.75 ? "warn" : (tie ? "accent" : "good");
-    return { rule: best, cls: cls, tie: tie, runnerUp: keys.length > 1 ? keys[1] : null };
+    /* smoothing at full strength (1.0) is plain order-up-to, not a second rule */
+    if (allowed.indexOf("out") >= 0 && ev.rules.smooth.alpha === 1.0) keys = keys.filter(function (k) { return k !== "smooth"; });
+    var rules = ev.rules, ranked = keys;
+    var band = ranked.filter(function (k) { return rules[k].yourCost <= rules[ranked[0]].yourCost * 1.02; });
+    var tie = band.length > 1;
+    /* a near tie (within 2% of the cheapest) breaks toward the calmer orders */
+    var calm = function (k) { var b = rules[k].yourBullwhip; return b === null || b === undefined ? 0.0 : b; };
+    var best = band.reduce(function (a, k) { return calm(k) < calm(a) ? k : a; }, band[0]), bestR = rules[best];
+    var others = ranked.filter(function (k) { return k !== best; });
+    var cls = bestR.fillRate < 0.75 ? "warn" : (tie ? "accent" : "good");
+    return { rule: best, cls: cls, tie: tie, runnerUp: others.length ? others[0] : null };
   }
 
   function renderBad(problems) {
@@ -188,12 +222,18 @@
     var rec = pickRecommendation(ev, inp.rules);
     var R = ev.rules[rec.rule], stageName = STAGE_TITLES[inp.stage];
     var nWeeks = inp.seriesList[0].length;
-    var lead = inp.config.orderDelay + inp.config.shipDelay;
+    var lead = ev.lead;
     var panel = $("verdictPanel");
     panel.className = "panel verdict v-" + rec.cls;
     $("vKicker").textContent = "Recommended rule · " + stageName.toLowerCase() + " · " + nWeeks + " weeks";
     $("vTitle").textContent = ruleTitle(rec.rule, ev);
 
+    var steady = R.yourCost === 0 && ev.rules.pass.yourCost === 0 && ev.rules.out.yourCost === 0;
+    if (steady) {
+      $("vTitle").textContent = "Any rule works: demand never moves";
+      $("vBody").textContent = "The chain opens in steady state and steady demand keeps it there, so every rule orders exactly what is sold and costs nothing. Pick a demand pattern that moves to see the rules differ.";
+      panel.className = "panel verdict v-neutral";
+    }
     var body = "Your stage pays " + money(R.yourCost) + " in holding and shortage costs over the game";
     if (inp.seriesList.length > 1) body += " — the median of " + inp.seriesList.length + " simulated demand paths; the middle 80% of paths land between " + money(R.yourCostLo) + " and " + money(R.yourCostHi);
     body += ". ";
@@ -210,21 +250,37 @@
     } else {
       body += "It fills " + pct(R.fillRate) + " of the orders reaching you.";
     }
-    $("vBody").textContent = body;
+    if (!steady) $("vBody").textContent = body;
 
     $("vKpis").innerHTML =
-      '<div class="kpi"><span class="k-lbl">Your cost, ' + nWeeks + ' weeks</span><span class="k-val">' + money(R.yourCost) + "</span></div>" +
-      '<div class="kpi"><span class="k-lbl">Bullwhip at your stage</span><span class="k-val">' + bw(R.yourBullwhip) + "</span></div>" +
-      '<div class="kpi"><span class="k-lbl">Bullwhip at the factory</span><span class="k-val">' + bw(R.factoryBullwhip) + "</span></div>" +
-      '<div class="kpi"><span class="k-lbl">Orders filled</span><span class="k-val">' + pct(R.fillRate) + "</span></div>";
+      '<div class="kpi"><span class="k-val">' + money(R.yourCost) + '</span><span class="k-lbl">Your cost, ' + nWeeks + ' weeks</span></div>' +
+      '<div class="kpi"><span class="k-val">' + bw(R.yourBullwhip) + '</span><span class="k-lbl">Bullwhip at your stage</span></div>' +
+      '<div class="kpi"><span class="k-val">' + bw(R.factoryBullwhip) + '</span><span class="k-lbl">Bullwhip at the factory</span></div>' +
+      '<div class="kpi"><span class="k-val">' + pct(R.fillRate) + '</span><span class="k-lbl">Orders filled</span></div>';
 
     /* ---- built-in checks ---- */
     var checks = [];
-    var muL = Math.round(ev.demandMu * Math.max(lead, 1));
-    var safety = ev.target - muL;
+    var safety = ev.safety, muL = ev.target - ev.safety;
     checks.push(["info", "TARGET", "Order-up-to target",
-      "The target of " + ev.target + " units is " + Math.max(lead, 1) + " weeks of demand (" + muL + ") plus safety stock (" + safety + ") for a " + pct(inp.config.serviceLevel) + " service level." +
+      "At average demand (" + fmtN(ev.demandMu, 1) + " a week) the target is " + ev.target + " units: " + lead + " weeks of demand (" + muL + ") plus safety stock (" + safety + ") for a " + pct(inp.config.serviceLevel) + " service level. Each week the demand part follows the forecast; the safety stock stays fixed." +
       (rec.rule === "pass" ? " Pass-through itself uses no target." : "")]);
+    if (rec.rule !== "pass" && !steady) {
+      var cr = criticalRatio(inp.config.holdingCost, inp.config.backlogCost);
+      var crSl = Math.min(0.995, Math.max(0.5, cr));
+      if ($("serviceLevel").value === "auto") {
+        checks.push(["ok", "COST-BALANCED", "Service level from your costs",
+          "The target aims for " + pct(crSl) + ": shortage cost ÷ (shortage + holding) = " + fmtN(inp.config.backlogCost, 2) + " ÷ " + fmtN(inp.config.backlogCost + inp.config.holdingCost, 2) + ", the critical ratio (Silver, Pyke and Thomas, 2016)." +
+          (cr < 0.5 ? " Your ratio is below 50%; the tool keeps at least 50% so the target never drops under expected lead-time demand." : "")]);
+      } else if (Math.abs(inp.config.serviceLevel - crSl) >= 0.05) {
+        var balCfg = Object.assign({}, inp.config, { serviceLevel: crSl });
+        var balEv = ChainSim.evaluateSeries(balCfg, inp.seriesList, inp.stage);
+        var balCost = balEv.rules[rec.rule].yourCost, diff = R.yourCost - balCost;
+        checks.push([diff > R.yourCost * 0.03 ? "warn" : "info", "SERVICE LEVEL", "Is " + pct(inp.config.serviceLevel) + " the right target?",
+          "Your costs balance at " + pct(crSl) + " (shortage ÷ (shortage + holding), the critical ratio). With that target this rule would cost " + money(balCost) +
+          (Math.abs(diff) < 1 ? ", about the same." : diff > 0 ? ", " + money(diff) + " less." : ", " + money(-diff) + " more. The critical ratio is the right target when the forecast keeps up with demand; when it lags, extra safety stock pays for itself.") +
+          " Pick 'Balanced to my costs' to use it."]);
+      }
+    }
     var pol = ChainSim.rulePolicy(ev, rec.rule);
     var flippedCfg = Object.assign({}, inp.config, { infoSharing: !inp.config.infoSharing });
     var altBw = altFactoryBullwhip(flippedCfg, inp.seriesList, inp.stage, pol);
@@ -240,6 +296,22 @@
           "Sharing demand barely moves the factory's bullwhip here: " + bw(R.factoryBullwhip) + " with the current setting, " + bw(altBw) + " without. Amplification is not always about missing information."]);
       }
     }
+    var fwNow = inp.config.forecastWeeks, fwLo = Math.max(2, Math.round(fwNow / 2)), fwHi = Math.min(26, fwNow * 2);
+    if (R.factoryBullwhip !== null && fwLo !== fwNow && fwHi !== fwNow) {
+      var bwLo = altFactoryBullwhip(Object.assign({}, inp.config, { forecastWeeks: fwLo }), inp.seriesList, inp.stage, pol);
+      var bwHi = altFactoryBullwhip(Object.assign({}, inp.config, { forecastWeeks: fwHi }), inp.seriesList, inp.stage, pol);
+      if (bwLo !== null && bwHi !== null) {
+        var spread = Math.max(bwLo, bwHi, R.factoryBullwhip) / Math.max(0.01, Math.min(bwLo, bwHi, R.factoryBullwhip));
+        checks.push([spread > 1.5 ? "warn" : "info", "FORECAST", "Forecast window",
+          "Every stage forecasts demand from the last " + fwNow + " weeks of " + (inp.config.infoSharing ? "customer demand" : "the orders it receives") + "; the factory's bullwhip is " + bw(R.factoryBullwhip) +
+          ". With " + fwLo + " weeks it would be " + bw(bwLo) + ", with " + fwHi + " weeks " + bw(bwHi) + ". Short windows chase noise and each stage adds its own (Chen, Drezner, Ryan and Simchi-Levi, 2000)" +
+          (spread > 1.5 ? "; the window matters as much as the rule here." : ".")]);
+      }
+    }
+    if (rec.rule === "pass") {
+      checks.push(["info", "PASS-THROUGH", "Why passing orders on can win",
+        "Ordering exactly what was ordered keeps your stock position where it started: it is order-up-to with the target frozen at the opening. That is the textbook best when demand keeps a steady mean, because a re-estimated target only adds noise. It never rebuilds stock after a lasting change in demand, so check the step example before trusting it on a market that is growing."]);
+    }
     var otherModel = inp.config.costModel === "backlog" ? "lost" : "backlog";
     var altCfg = Object.assign({}, inp.config, { costModel: otherModel });
     var alt = altBestRule(altCfg, inp.seriesList, inp.stage, ev, inp.rules);
@@ -250,18 +322,23 @@
       checks.push(["info", "COST MODEL", "Backlog or lost sales?",
         RULE_NAMES[rec.rule] + " stays cheapest if unfilled orders are treated as " + (otherModel === "lost" ? "lost sales" : "backlogs") + " too."]);
     }
-    if (inp.rules.indexOf("smooth") >= 0) {
+    if (inp.rules.indexOf("smooth") >= 0 && !steady) {
       var atOne = null;
       ev.smoothCurve.forEach(function (p) { if (p.alpha === 1.0) atOne = p; });
       var bestPt = ev.smoothCurve[0];
       ev.smoothCurve.forEach(function (p) { if (p.yourCost < bestPt.yourCost) bestPt = p; });
-      if (atOne) {
+      var bestSmooth = null;
+      ev.smoothCurve.forEach(function (p) { if (p.alpha < 1 && (!bestSmooth || p.yourCost < bestSmooth.yourCost)) bestSmooth = p; });
+      if (atOne && bestPt.alpha === 1.0 && bestSmooth) {
+        checks.push(["info", "SMOOTHING", "The smoothing trade-off",
+          "No smoothing beats the full-strength rule at your stage: closing only part of the gap leaves you short for longer than it saves. The best smoothed version (" + fmtN(bestSmooth.alpha, 1) + ") costs " + money(bestSmooth.yourCost) + " against " + money(atOne.yourCost) + ", for a bullwhip of " + bw(bestSmooth.yourBullwhip) + " instead of " + bw(atOne.yourBullwhip) + ". The full curve is in 'The smoothing trade-off' below."]);
+      } else if (atOne) {
         checks.push([rec.rule === "smooth" ? "ok" : "info", "SMOOTHING", "The smoothing trade-off",
           "Smoothing " + fmtN(bestPt.alpha, 1) + " gives your bullwhip " + bw(bestPt.yourBullwhip) + " at " + money(bestPt.yourCost) + "; the full-strength rule (1.0) gives " + bw(atOne.yourBullwhip) + " at " + money(atOne.yourCost) + ". The full curve is in 'The smoothing trade-off' below."]);
       }
     }
     $("vChecks").innerHTML = checks.map(function (c) {
-      return '<li class="check is-' + c[0] + '"><span class="c-badge">' + c[1] + '</span><span class="c-text"><strong>' + c[2] + ".</strong> " + c[3] + "</span></li>";
+      return '<div class="check is-' + c[0] + '"><span class="badge">' + c[1] + '</span><div><span class="c-name">' + c[2] + (/[.?!]$/.test(c[2]) ? "" : ".") + '</span> <span class="c-text">' + c[3] + "</span></div></div>";
     }).join("");
 
     view.summary = $("vTitle").textContent + " At the " + STAGE_TITLES[inp.stage].toLowerCase() + ", over " + nWeeks + " weeks: your cost " + money(R.yourCost) +
@@ -276,7 +353,7 @@
     var rows = ["out", "smooth", "pass"].map(function (key) {
       var r = ev.rules[key];
       var compared = inp.rules.indexOf(key) >= 0;
-      var name = RULE_NAMES[key] + (key === "smooth" ? " (" + fmtN(r.alpha, 1) + ")" : "");
+      var name = RULE_NAMES[key] + (key === "smooth" ? " (" + fmtN(r.alpha, 1) + (r.alpha === 1.0 ? ": no smoothing pays" : "") + ")" : "");
       return '<tr class="' + (key === rec.rule ? "rec" : "") + (compared ? "" : " dim") + '"><td>' + name +
         (key === rec.rule ? " (recommended)" : compared ? "" : " (not compared)") + "</td><td>" + money(r.yourCost) + "</td><td>" +
         money(r.chainCost) + "</td><td>" + bw(r.yourBullwhip) + "</td><td>" + bw(r.factoryBullwhip) + "</td><td>" + pct(r.fillRate) + "</td></tr>";
@@ -284,7 +361,7 @@
     $("numbersBody").innerHTML =
       '<table class="numbers"><thead><tr><th>Rule</th><th>Your cost</th><th>Whole-chain cost</th><th>Your bullwhip</th><th>Factory bullwhip</th><th>Filled</th></tr></thead><tbody>' +
       rows + "</tbody></table>" +
-      '<p class="dim">Costs are holding plus shortage costs over ' + inp.seriesList[0].length + ' weeks. With random demand, each figure is the median over ' + inp.seriesList.length + ' demand paths. The other stages always use plain order-up-to; only your stage\'s rule changes.</p>';
+      '<p class="small muted">Costs are holding plus shortage costs over ' + inp.seriesList[0].length + ' weeks' + (inp.seriesList.length > 1 ? '; each figure is the median over ' + inp.seriesList.length + ' demand paths' : '') + '. The other stages always use plain order-up-to; only your stage\'s rule changes.</p>';
   }
 
   function seriesFrom(orders, name, color, dash) {
@@ -296,26 +373,26 @@
     var series = [seriesFrom(demand, "Customer demand", "neutral", "4 3")];
     series.push(seriesFrom(R.yourOrders, "Your orders (" + RULE_NAMES[rec.rule].toLowerCase() + ")", "accent"));
     if (rec.rule !== "pass") series.push(seriesFrom(P.yourOrders, "Your orders (pass-through)", "series2", "6 4"));
-    series.push(seriesFrom(R.factoryOrders, "Factory orders (" + RULE_NAMES[rec.rule].toLowerCase() + ")", "series3"));
-    if (rec.rule !== "pass") series.push(seriesFrom(P.factoryOrders, "Factory orders (pass-through)", "series4", "6 4"));
+    if (inp.stage !== 3) series.push(seriesFrom(R.factoryOrders, "Factory orders (" + RULE_NAMES[rec.rule].toLowerCase() + ")", "series3"));
+    if (rec.rule !== "pass" && inp.stage !== 3) series.push(seriesFrom(P.factoryOrders, "Factory orders (pass-through)", "series4", "6 4"));
     view.chartSeries = series;
-    Tool.lineChart($("orderChart"), series, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 });
+    chart($("orderChart"), series, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 });
     $("chartNote").textContent = inp.seriesList.length > 1
       ? "One of the " + inp.seriesList.length + " simulated demand paths; the verdict and costs use all of them."
       : "The simulated demand path behind the verdict.";
   }
-  function redrawCompareChart() { if (view.chartSeries) Tool.lineChart($("orderChart"), view.chartSeries, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 }); }
+  function redrawCompareChart() { if (view.chartSeries) chart($("orderChart"), view.chartSeries, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 }); }
 
   function drawCurves(ev) {
     view.curve = ev.smoothCurve;
     var anyBw = ev.smoothCurve.some(function (p) { return p.yourBullwhip !== null; });
-    Tool.lineChart($("curveCostChart"),
+    chart($("curveCostChart"),
       [{ name: "Your cost", color: "accent", points: ev.smoothCurve.map(function (p) { return { x: p.alpha, y: p.yourCost }; }) }],
-      { xLabel: "Smoothing factor (share of the gap ordered each week)", yLabel: "Your cost ($)", yMin: 0 });
+      { xLabel: "Smoothing factor (share of the gap ordered each week)", yLabel: "Your cost ($)", yMin: 0, xFormat: function (v) { return fmtN(v, 1); }, yFormat: function (v) { return money(v); } });
     if (anyBw) {
-      Tool.lineChart($("curveBwChart"),
+      chart($("curveBwChart"),
         [{ name: "Your bullwhip ratio", color: "series2", points: ev.smoothCurve.filter(function (p) { return p.yourBullwhip !== null; }).map(function (p) { return { x: p.alpha, y: p.yourBullwhip }; }) }],
-        { xLabel: "Smoothing factor", yLabel: "Bullwhip ratio", yMin: 0 });
+        { xLabel: "Smoothing factor", yLabel: "Bullwhip ratio", yMin: 0, xFormat: function (v) { return fmtN(v, 1); }, hLines: [{ y: 1, label: "×1: as steady as demand", color: "muted" }] });
     } else {
       $("curveBwChart").innerHTML = '<p class="dim">Demand never varies in this setup, so a bullwhip ratio has nothing to divide by.</p>';
     }
@@ -329,7 +406,7 @@
       od: $("orderDelay").value, sd: $("shipDelay").value,
       hc: $("holdingCost").value, bc: $("backlogCost").value,
       cm: $("costModel").value, svc: $("serviceLevel").value,
-      dp: $("demandPattern").value, dc: $("demandCustom").value,
+      dp: $("demandPattern").value, dc: $("demandCustom").value, fw: $("forecastWeeks").value,
       sh: $("infoSharing").checked ? "1" : "0", rules: checkedRules().join(","),
       pr: $("playRole").value, pd: $("playDemand").value,
       ba: $("botA").value, bb: $("botB").value, bc2: $("botC").value,
@@ -343,7 +420,8 @@
     Tool.writeParams(currentParams());
   }
   function safeReadParams() {
-    try { return Tool.readParams(); } catch (e) { return {}; }
+    var d = {}; ["ex","stage","od","sd","hc","bc","cm","svc","dp","dc","fw","sh","rules","pr","pd","ba","bb","bc2","m"].forEach(function (k) { d[k] = null; });
+    try { return Tool.readParams(d); } catch (e) { return {}; }
   }
 
   var debounce = null, computing = false;
@@ -474,7 +552,7 @@
   function renderPlayTiles() {
     var st = play.state;
     $("playStages").innerHTML = [0, 1, 2, 3].map(function (i) {
-      var inv = st.invLog[i].length ? st.invLog[i][st.invLog[i].length - 1] : ChainSim.INIT_INV;
+      var inv = st.invLog[i].length ? st.invLog[i][st.invLog[i].length - 1] : st.inv[i];
       var bl = st.backlogLog[i].length ? st.backlogLog[i][st.backlogLog[i].length - 1] : 0;
       var lastOrder = st.orders[i].length ? st.orders[i][st.orders[i].length - 1] : "–";
       var who = i === play.role ? "You" : botNameFor(i);
@@ -499,9 +577,9 @@
         points: st.orders[i].map(function (y, w) { return { x: w + 1, y: y }; }) });
     });
     view.playSeries = series;
-    Tool.lineChart($("playChart"), series, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 });
+    chart($("playChart"), series, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 });
   }
-  function redrawPlayChart() { if (view.playSeries) Tool.lineChart($("playChart"), view.playSeries, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 }); }
+  function redrawPlayChart() { if (view.playSeries) chart($("playChart"), view.playSeries, { xLabel: "Week", yLabel: "Units ordered per week", yMin: 0 }); }
 
   function endGame() {
     var st = play.state, role = play.role;
@@ -526,10 +604,10 @@
       '<p class="v-body">The best rule on the same demand, with the same teammates, was ' + bestName + ' at ' + money(best.cost) +
       (saved >= 0 ? " — you beat it by " + money(saved) + ". Nicely judged." : " — " + money(-saved) + " less than you spent.") +
       " Your bullwhip ratio was " + bw(yourBw) + "; the best rule's was " + bw(best.bw) + ". You filled " + pct(fill) + " of the orders that reached you, and the whole chain spent " + money(st.cost[0] + st.cost[1] + st.cost[2] + st.cost[3]) + ".</p>" +
-      '<div class="kpis"><div class="kpi"><span class="k-lbl">Your cost</span><span class="k-val">' + money(yourCost) + '</span></div>' +
-      '<div class="kpi"><span class="k-lbl">Best rule</span><span class="k-val">' + money(best.cost) + '</span></div>' +
-      '<div class="kpi"><span class="k-lbl">Your bullwhip</span><span class="k-val">' + bw(yourBw) + '</span></div>' +
-      '<div class="kpi"><span class="k-lbl">Orders filled</span><span class="k-val">' + pct(fill) + "</span></div></div></div>";
+      '<div class="kpis"><div class="kpi"><span class="k-val">' + money(yourCost) + '</span><span class="k-lbl">Your cost</span></div>' +
+      '<div class="kpi"><span class="k-val">' + money(best.cost) + '</span><span class="k-lbl">Best rule</span></div>' +
+      '<div class="kpi"><span class="k-val">' + bw(yourBw) + '</span><span class="k-lbl">Your bullwhip</span></div>' +
+      '<div class="kpi"><span class="k-val">' + pct(fill) + '</span><span class="k-lbl">Orders filled</span></div></div></div>';
     $("playStatus").textContent = "Game over. Start a new game to try another role, other teammates, or another demand pattern.";
     play.preview = null;
   }
@@ -539,8 +617,9 @@
     var playOn = mode === "play";
     $("playMode").hidden = !playOn;
     $("compareMode").hidden = playOn;
-    $("modeCompare").setAttribute("aria-pressed", String(!playOn));
-    $("modePlay").setAttribute("aria-pressed", String(playOn));
+    $("modeCompare").classList.toggle("active", !playOn); $("modeCompare").setAttribute("aria-selected", String(!playOn));
+    $("modePlay").classList.toggle("active", playOn); $("modePlay").setAttribute("aria-selected", String(playOn));
+    if (playOn) redrawPlayChart(); else redrawAll();
     writeUrl();
   }
 
@@ -582,6 +661,7 @@
     if (params.svc != null) setVal("serviceLevel", params.svc);
     if (params.dp != null) setVal("demandPattern", params.dp);
     if (params.dc != null) $("demandCustom").value = params.dc;
+    if (params.fw != null) setVal("forecastWeeks", params.fw);
     if (params.sh != null) $("infoSharing").checked = params.sh === "1";
     if (params.rules != null) {
       var rk = params.rules.split(",");
@@ -599,24 +679,18 @@
     if (params.m === "play") setMode("play");
 
     sel.addEventListener("change", function () { applyExample(parseInt(sel.value, 10) || 0); recompute(); });
-    ["stage", "orderDelay", "shipDelay", "holdingCost", "backlogCost", "costModel", "serviceLevel", "demandPattern", "demandCustom", "infoSharing", "ruleOut", "ruleSmooth", "rulePass"].forEach(function (id) {
+    ["stage", "orderDelay", "shipDelay", "holdingCost", "backlogCost", "costModel", "serviceLevel", "demandPattern", "forecastWeeks", "demandCustom", "infoSharing", "ruleOut", "ruleSmooth", "rulePass"].forEach(function (id) {
       $(id).addEventListener("input", recompute);
       $(id).addEventListener("change", recompute);
     });
     $("demandPattern").addEventListener("change", syncCustomVisibility);
     $("copySummary").addEventListener("click", function () {
       if (!view.summary) return;
-      Tool.copy(view.summary).then(function () {
-        $("copiedNote").hidden = false;
-        setTimeout(function () { $("copiedNote").hidden = true; }, 1600);
-      });
+      Tool.copy(view.summary + "\n\nOpen with these settings: " + location.href, $("copiedNote"), "Summary copied.");
     });
     $("copyLink").addEventListener("click", function () {
       writeUrl();
-      Tool.copy(location.href).then(function () {
-        $("copiedNote").hidden = false;
-        setTimeout(function () { $("copiedNote").hidden = true; }, 1600);
-      });
+      Tool.copy(location.href, $("copiedNote"), "Link copied: it opens with these settings.");
     });
     $("modeCompare").addEventListener("click", function () { setMode("compare"); });
     $("modePlay").addEventListener("click", function () { setMode("play"); });

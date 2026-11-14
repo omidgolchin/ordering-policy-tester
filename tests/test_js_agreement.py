@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(NODE is None, reason="node not available")
 GAMES = [
     (dict(orderDelay=1, shipDelay=2, holdingCost=0.5, backlogCost=1.0, costModel="backlog", infoSharing=False, serviceLevel=0.95),
      [4] * 4 + [8] * 32, [{"type": "out", "alpha": 1.0}] * 4),
-    (dict(orderDelay=0, shipDelay=1, holdingCost=0.25, backlogCost=2.0, costModel="lost", infoSharing=False, serviceLevel=0.9),
+    (dict(orderDelay=0, shipDelay=1, holdingCost=0.25, backlogCost=2.0, costModel="lost", infoSharing=False, serviceLevel=0.9, forecastWeeks=5),
      [5, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12],
      [{"type": "sterman"}, {"type": "passthrough"}, {"type": "out", "alpha": 0.5}, {"type": "scripted", "orders": [7] * 36}]),
     (dict(orderDelay=0, shipDelay=0, holdingCost=1.0, backlogCost=0.75, costModel="backlog", infoSharing=True, serviceLevel=0.99),

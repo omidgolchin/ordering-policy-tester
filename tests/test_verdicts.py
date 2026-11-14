@@ -15,19 +15,20 @@ def _random_series_set():
 
 
 def test_good_verdict_when_a_rule_wins_clearly():
-    """Random demand, expensive stock-outs: smoothing wins by more
-    than the tie band and still fills most orders."""
-    cfg = dict(BASE, backlogCost=2.0)
-    ev = evaluate_series(cfg, _random_series_set(), 0)
+    """Random demand around a steady mean, at the retailer: passing
+    orders through is a base-stock policy with its target fixed at the
+    opening, the right rule when the mean holds still, and it wins by
+    more than the tie band while filling most orders."""
+    ev = evaluate_series(BASE, _random_series_set(), 0)
     rec = ev["recommendation"]
-    assert rec["rule"] == "smooth"
+    assert rec["rule"] == "pass"
     assert rec["cls"] == "good"
-    assert ev["rules"]["smooth"]["fillRate"] >= 0.75
+    assert ev["rules"]["pass"]["fillRate"] >= 0.75
 
 
 def test_accent_verdict_on_a_tie():
-    """Steady demand: the target rules tie with each other and both
-    beat passing orders through, so the verdict is neutral."""
+    """Steady demand: the chain opens in steady state, so every rule
+    keeps it there at no cost and the verdict is a neutral tie."""
     ev = evaluate_series(BASE, [[6] * 36], 0)
     rec = ev["recommendation"]
     assert rec["tie"] is True

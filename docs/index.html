@@ -1,206 +1,186 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Supply Chain Ordering Policy Tester</title>
+<title>Ordering Policy Tester: which reorder rule, and how much bullwhip</title>
 <meta name="description" content="Compare ordering rules for one stage of a four-stage supply chain: order-up-to, smoothed order-up-to, and pass-through, scored on cost and the bullwhip effect. Or play the ordering game yourself.">
+<script src="kit-theme.js"></script>
 <link rel="stylesheet" href="kit.css">
 <link rel="stylesheet" href="tool.css">
-<script src="kit-theme.js"></script>
 <style>
   .stage-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
-  .stage-tile { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--panel); }
+  .stage-tile { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--card); }
   .stage-tile.you { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .stage-tile h3 { margin: 0 0 2px; font-size: 15px; }
   .stage-tile .who { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
   .stage-tile .nums { font-size: 13px; line-height: 1.55; margin: 0; }
-  .invbar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 6px 0 2px; }
+  .invbar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin: 6px 0 2px; }
   .invbar i { display: block; height: 100%; background: var(--accent); }
-  .bl-badge { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 12px; font-weight: 700; background: var(--warnbg, #fdf3e0); color: var(--warn, #8a5a00); }
-  .bl-badge.zero { background: var(--okbg, #e5f4ea); color: var(--ok, #1e6b34); }
-  .play-turn { border: 1px dashed var(--accent); border-radius: 12px; padding: 12px 14px; margin: 12px 0; }
+  .bl-badge { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 12px; font-weight: 700; border: 1px solid currentColor; color: var(--series-2); }
+  .bl-badge.zero { color: var(--good); }
+  .play-turn { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 12px 14px; margin: 12px 0; }
   .play-turn p { margin: 4px 0; }
   .play-order-row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-top: 8px; }
   .play-order-row .field { min-width: 160px; }
   table.numbers { border-collapse: collapse; width: 100%; font-size: 14px; }
-  table.numbers th, table.numbers td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  table.numbers th, table.numbers td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--border); }
   table.numbers th:first-child, table.numbers td:first-child { text-align: left; }
   table.numbers tr.rec td { font-weight: 700; }
   .dim { color: var(--muted); }
-  .checkline { display: block; margin: 5px 0; font-weight: 400; }
-  .switchrow .switch { font-weight: 600; }
+  .checkline { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-weight: 400; font-size: var(--fs-small); }
+  .checkline input { width: auto; margin-top: 3px; flex: none; }
+  fieldset.field { border: 0; padding: 0; margin: 0; min-width: 0; }
+  fieldset.field legend { font-weight: 600; font-size: var(--fs-small); padding: 0; margin-bottom: 2px; }
+  textarea.paste { width: 100%; min-height: 70px; font: inherit; font-size: var(--fs-small); color: var(--fg); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; box-sizing: border-box; }
+  .table-scroll { overflow-x: auto; }
   @media (max-width: 700px) { .stage-grid { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
-<header class="kit-header">
-  <span class="kit-name">Ordering Policy Tester</span>
-  <nav class="kit-nav" aria-label="Other tools">
-    <a href="../bayesian-ab-lab/">Test Sizing</a>
-    <a href="../queue-simulator/">Staffing</a>
-    <a href="../experiment-hazard-simulator/">Eval Planner</a>
-  </nav>
-</header>
+<main>
+  <header class="kit-header">
+    <div class="kit-header-top">
+      <p class="kit-kicker">Omid Golchin · Decision tools</p>
+      <button type="button" class="kit-theme-toggle" aria-pressed="false">◐ Theme</button>
+    </div>
+    <h1>Ordering Policy Tester</h1>
+    <p class="kit-tagline">Which reorder rule to use at your stage of a supply chain, scored on your cost and on the bullwhip it sends upstream. Or play the ordering game and feel it happen.</p>
+  </header>
 
-<main class="wrap">
-  <div class="tool-head">
-    <h1>Which ordering rule should you use?</h1>
-    <p class="lede">You order stock for one stage of a supply chain: retailer, wholesaler, distributor, factory. Compare three ordering rules on cost and on the bullwhip effect, the way small swings in customer demand grow into wild swings in orders upstream. Or play the game yourself and see why it happens.</p>
-  </div>
-  <p class="save-note">Your settings are kept in the page link. Copy link saves them; nothing is uploaded.</p>
-
-  <div class="tool-modes" role="group" aria-label="Tool mode">
-    <button type="button" id="modeCompare" aria-pressed="true">Compare policies</button>
-    <button type="button" id="modePlay" aria-pressed="false">Play the game</button>
+  <div class="tool-modes" role="tablist" aria-label="Mode">
+    <button type="button" role="tab" id="modeCompare" class="active" aria-selected="true">Compare rules</button>
+    <button type="button" role="tab" id="modePlay" aria-selected="false">Play the game</button>
   </div>
 
   <!-- ================= Compare mode ================= -->
-  <div id="compareMode">
+  <section id="compareMode">
     <div class="work">
-      <form class="panel inputs" id="inputs">
-        <div class="field">
-          <label for="exampleSelect">Start from an example</label>
-          <select id="exampleSelect"></select>
-          <p class="hint" id="exampleNote"></p>
+      <form class="panel" id="inputs" novalidate onsubmit="return false">
+        <div class="panel-head">
+          <h2>Your stage</h2>
+          <select class="example" id="exampleSelect" aria-label="Load an example"></select>
         </div>
-
-        <div class="field">
-          <label for="stage">Your stage in the chain</label>
-          <select id="stage">
-            <option value="0">Retailer (you face the customer)</option>
-            <option value="1">Wholesaler</option>
-            <option value="2">Distributor</option>
-            <option value="3">Factory</option>
-          </select>
-          <p class="hint">The rules are scored at your stage. The other three stages order with a plain order-up-to rule.</p>
+        <p class="small muted" id="exampleNote" style="margin-top:0"></p>
+        <div class="fields">
+          <div class="field full"><label for="stage">Your stage in the chain</label>
+            <select id="stage">
+              <option value="0">Retailer (you face the customer)</option>
+              <option value="1">Wholesaler</option>
+              <option value="2">Distributor</option>
+              <option value="3">Factory</option>
+            </select>
+            <div class="hint">The rules are scored at your stage; the other three stages order with plain order-up-to.</div></div>
+          <div class="field"><label for="orderDelay">Order delay</label><div class="input-wrap"><input type="number" id="orderDelay" min="0" max="8" step="1" value="1"><span class="unit">wk</span></div>
+            <p class="err" id="orderDelayErr" hidden></p><div class="hint">Until your supplier sees the order.</div></div>
+          <div class="field"><label for="shipDelay">Shipping delay</label><div class="input-wrap"><input type="number" id="shipDelay" min="0" max="8" step="1" value="2"><span class="unit">wk</span></div>
+            <p class="err" id="shipDelayErr" hidden></p><div class="hint">Until goods arrive once shipped. The two add up to your lead time.</div></div>
+          <div class="field"><label for="holdingCost">Holding cost</label><div class="input-wrap"><input type="number" id="holdingCost" min="0" max="100" step="0.05" value="0.5"><span class="unit">$</span></div>
+            <p class="err" id="holdingCostErr" hidden></p><div class="hint">Per unit in stock, per week.</div></div>
+          <div class="field"><label for="backlogCost">Shortage cost</label><div class="input-wrap"><input type="number" id="backlogCost" min="0" max="100" step="0.05" value="1"><span class="unit">$</span></div>
+            <p class="err" id="backlogCostErr" hidden></p><div class="hint">Per unit owed, per week (or per lost sale).</div></div>
+          <div class="field"><label for="costModel">An order you cannot fill</label>
+            <select id="costModel">
+              <option value="backlog">Waits as a backlog</option>
+              <option value="lost">Is a lost sale</option>
+            </select></div>
+          <div class="field"><label for="serviceLevel">Order-up-to target aims for</label>
+            <select id="serviceLevel">
+              <option value="auto">Balanced to my costs</option>
+              <option value="0.9">90% service level</option>
+              <option value="0.95" selected>95% service level</option>
+              <option value="0.99">99% service level</option>
+            </select>
+            <div class="hint">The chance of filling an order from stock. Balanced uses shortage ÷ (shortage + holding).</div></div>
+          <div class="field"><label for="demandPattern">Customer demand</label>
+            <select id="demandPattern">
+              <option value="step">Steps up (classic)</option>
+              <option value="constant">Steady</option>
+              <option value="seasonal">Seasonal swing</option>
+              <option value="random">Random, steady mean</option>
+              <option value="custom">Paste your own</option>
+            </select></div>
+          <div class="field"><label for="forecastWeeks">Forecast window</label><div class="input-wrap"><input type="number" id="forecastWeeks" min="1" max="26" step="1" value="8"><span class="unit">wk</span></div>
+            <p class="err" id="forecastWeeksErr" hidden></p><div class="hint">Each stage forecasts demand as the average of this many recent weeks.</div></div>
+          <div class="field full" id="demandCustomWrap" hidden><label for="demandCustom">Weekly demand, one number per week</label>
+            <textarea class="paste" id="demandCustom" rows="3">6, 7, 5, 8, 6, 9, 7, 6, 8, 10, 7, 6, 5, 7, 9, 8, 6, 7, 10, 9, 7, 6, 8, 7, 9, 11, 8, 7, 6, 8, 9, 7, 8, 10, 7, 9</textarea>
+            <p class="err" id="demandErr" hidden></p>
+            <div class="hint">8 to 52 weeks, separated by commas or spaces: paste a column from your sales history.</div></div>
+          <fieldset class="field full">
+            <legend>Rules to compare</legend>
+            <label class="checkline"><input type="checkbox" id="ruleOut" checked> <span>Order-up-to: keep stock plus pipeline up to a target</span></label>
+            <label class="checkline"><input type="checkbox" id="ruleSmooth" checked> <span>Order-up-to with smoothing: close only part of the gap each week</span></label>
+            <label class="checkline"><input type="checkbox" id="rulePass" checked> <span>Pass-through: order what was ordered from you</span></label>
+          </fieldset>
+          <div class="field full">
+            <label class="checkline"><input type="checkbox" id="infoSharing"> <span><b>Share customer demand with the whole chain.</b> Every stage plans against real customer demand instead of guessing it from the orders it receives.</span></label>
+          </div>
         </div>
-
-        <div class="field">
-          <label for="orderDelay">Order delay (weeks)</label>
-          <input type="number" id="orderDelay" min="0" max="8" step="1" value="1">
-          <p class="err" id="orderDelayErr" hidden></p>
-          <p class="hint">How long your order takes to reach your supplier: paperwork and processing.</p>
+        <div class="actions" style="margin-top:12px">
+          <button type="button" id="assistToggle">✦ Fill from my description</button>
+          <span class="footnote">Describe your supply setup; an AI model fills the form, the simulation does the math.</span>
         </div>
-        <div class="field">
-          <label for="shipDelay">Shipping delay (weeks)</label>
-          <input type="number" id="shipDelay" min="0" max="8" step="1" value="2">
-          <p class="err" id="shipDelayErr" hidden></p>
-          <p class="hint">How long goods take to arrive once shipped (for the factory: to be produced). Order delay plus shipping delay is your lead time.</p>
-        </div>
-        <div class="field">
-          <label for="holdingCost">Holding cost ($ per unit per week)</label>
-          <input type="number" id="holdingCost" min="0" max="100" step="0.05" value="0.5">
-          <p class="err" id="holdingCostErr" hidden></p>
-        </div>
-        <div class="field">
-          <label for="backlogCost">Shortage cost ($ per unit per week)</label>
-          <input type="number" id="backlogCost" min="0" max="100" step="0.05" value="1">
-          <p class="err" id="backlogCostErr" hidden></p>
-          <p class="hint">What being one unit short for one week costs you (or, under lost sales below, what one lost sale costs).</p>
-        </div>
-        <div class="field">
-          <label for="costModel">When you cannot fill an order</label>
-          <select id="costModel">
-            <option value="backlog">It waits as a backlog until you can ship</option>
-            <option value="lost">It is a lost sale, gone for good</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="serviceLevel">Order-up-to target aims for</label>
-          <select id="serviceLevel">
-            <option value="0.9">90% service level</option>
-            <option value="0.95" selected>95% service level</option>
-            <option value="0.99">99% service level</option>
-          </select>
-          <p class="hint">The target covers lead-time demand plus safety stock for this chance of filling an order from stock.</p>
-        </div>
-        <div class="field">
-          <label for="demandPattern">Customer demand</label>
-          <select id="demandPattern">
-            <option value="step">Steady, then steps up (the classic game)</option>
-            <option value="constant">Steady, the same every week</option>
-            <option value="seasonal">Seasonal swing</option>
-            <option value="random">Random week to week</option>
-            <option value="custom">Paste your own weekly demand</option>
-          </select>
-        </div>
-        <div class="field" id="demandCustomWrap" hidden>
-          <label for="demandCustom">Weekly demand, one number per week</label>
-          <textarea id="demandCustom" rows="3">6, 7, 5, 8, 6, 9, 7, 6, 8, 10, 7, 6, 5, 7, 9, 8, 6, 7, 10, 9, 7, 6, 8, 7, 9, 11, 8, 7, 6, 8, 9, 7, 8, 10, 7, 9</textarea>
-          <p class="err" id="demandErr" hidden></p>
-          <p class="hint">Between 8 and 52 weekly numbers, separated by commas or spaces.</p>
-        </div>
-
-        <fieldset class="field">
-          <legend>Rules to compare</legend>
-          <label class="checkline"><input type="checkbox" id="ruleOut" checked> Order-up-to (keep stock up to a target)</label>
-          <label class="checkline"><input type="checkbox" id="ruleSmooth" checked> Order-up-to with smoothing (close only part of the gap)</label>
-          <label class="checkline"><input type="checkbox" id="rulePass" checked> Pass-through (order what was ordered from you)</label>
-        </fieldset>
-
-        <div class="field switchrow">
-          <label class="switch"><input type="checkbox" id="infoSharing"> <span>Share customer demand with the whole chain</span></label>
-          <p class="hint">Every stage plans against real customer demand instead of guessing from the orders it receives.</p>
-        </div>
-
-        <details class="more assist-block">
-          <summary>Fill from my description (AI)</summary>
-          <p>Describe your setup and let a model fill the settings in, using your own key.</p>
-          <button type="button" class="btn ghost" id="assistToggle">Fill from my description</button>
-          <div id="assistMount"></div>
-        </details>
+        <div id="assistMount"></div>
       </form>
 
-      <section class="panel verdict v-accent" id="verdictPanel" aria-live="polite">
-        <p class="v-kicker" id="vKicker">Recommended rule</p>
-        <h2 class="v-title" id="vTitle">Working it out…</h2>
-        <p class="v-body" id="vBody"></p>
-        <div class="kpis" id="vKpis"></div>
-        <ul class="checks" id="vChecks"></ul>
-        <div class="v-actions">
-          <button type="button" class="btn" id="copySummary">Copy summary</button>
-          <button type="button" class="btn ghost" id="copyLink">Copy link</button>
-          <span class="copied" id="copiedNote" hidden>Copied</span>
+      <div>
+        <section class="panel verdict" id="verdictPanel" aria-live="polite">
+          <p class="v-kicker" id="vKicker">Recommended rule</p>
+          <p class="v-title" id="vTitle">Working it out…</p>
+          <p class="v-body" id="vBody"></p>
+          <div class="kpis" id="vKpis"></div>
+          <div class="checks" id="vChecks"></div>
+        </section>
+        <div class="actions">
+          <button type="button" id="copySummary">Copy summary</button>
+          <button type="button" id="copyLink">Copy link</button>
+          <span class="toast" id="copiedNote"></span>
         </div>
-      </section>
+      </div>
     </div>
 
-    <section class="panel chart-panel">
+    <section class="panel" style="margin-top:16px">
       <h2>Orders week by week</h2>
-      <p class="panel-note">What each stage orders under the recommended rule, against pass-through. Customer demand runs underneath. Watch the swings grow as orders move upstream: that growth is the bullwhip effect.</p>
-      <div id="orderChart"></div>
-      <p class="chart-note" id="chartNote"></p>
+      <p class="small muted" style="margin-top:0">What your stage and the factory order under the recommended rule, against pass-through, with customer demand dashed underneath. The growth from your line to the factory's is the bullwhip effect.</p>
+      <div class="svgchart" id="orderChart"></div>
+      <p class="chart-caption" id="chartNote"></p>
     </section>
 
     <details class="more">
-      <summary>The numbers behind the verdict</summary>
-      <div id="numbersBody"></div>
+      <summary>The numbers behind the verdict <span class="sub">every rule, side by side</span></summary>
+      <div class="more-body"><div class="table-scroll" id="numbersBody"></div></div>
     </details>
 
     <details class="more">
-      <summary>The smoothing trade-off</summary>
+      <summary>The smoothing trade-off <span class="sub">calmer orders or lower cost</span></summary>
+      <div class="more-body small">
       <p>Order-up-to with smoothing closes only a fraction of the gap to your target each week. A smaller fraction calms your orders (a lower bullwhip ratio) but reacts slowly when demand moves, which can cost more. Disney and Towill (2003) map this trade-off; here it is for your settings, at your stage.</p>
       <h3>Your cost by smoothing factor</h3>
-      <div id="curveCostChart"></div>
+      <div class="svgchart" id="curveCostChart"></div>
       <h3>Your bullwhip ratio by smoothing factor</h3>
-      <div id="curveBwChart"></div>
+      <div class="svgchart" id="curveBwChart"></div>
+      </div>
     </details>
 
     <details class="more">
-      <summary>How the verdict is decided</summary>
-      <p>The chain is simulated week by week for 36 weeks. Every stage starts with 12 units on hand and full pipelines, the classic opening of the Beer Game (Sterman, 1989). Each week a stage receives goods, gets its incoming order, ships what it can, pays holding cost on what is left and shortage cost on what it owes, then places its order. Deterministic demand patterns are simulated once; random demand is simulated over 20 demand paths and the verdict uses the median, with the middle 80% range shown.</p>
-      <p><strong>Order-up-to target.</strong> S = (average weekly demand × lead time) + z × (demand spread × √lead time), where z comes from the service level you pick (1.64 for 95%). It is the standard base-stock target (Silver, Pyke and Thomas, 2016). Without information sharing, each stage estimates demand from the orders it has received so far, which is exactly how the bullwhip starts (Lee, Padmanabhan and Whang, 1997).</p>
-      <p><strong>Bullwhip ratio.</strong> The variance of a stage's orders divided by the variance of customer demand (Chen, Drezner, Ryan and Simchi-Levi, 2000). 1.0 means orders are exactly as steady as demand; the classic result is that rational ordering rules still push it well above 1 at the factory.</p>
-      <p><strong>Smoothing.</strong> The proportional order-up-to rule orders a fraction of the gap between the target and the inventory position (Disney and Towill, 2003). The tool tries factors from 0.2 to 1.0 and keeps the cheapest at your stage.</p>
+      <summary>How the verdict is decided <span class="sub">simulation, formulas, sources</span></summary>
+      <div class="more-body small">
+      <p>The chain is simulated week by week for 36 weeks. It opens in steady state: pipelines full at the opening demand level (the median of the first four weeks) and every stage holding its safety stock, so demand that never moves leaves every rule at zero cost (tested). Each week a stage receives goods, gets its incoming order, ships what it can, pays holding cost on what is left and shortage cost on what it owes, then places its order. Deterministic demand patterns are simulated once; random demand is simulated over 20 demand paths and the verdict uses the median, with the middle 80% range shown.</p>
+      <p><strong>Order-up-to target.</strong> S = (forecast weekly demand × lead time) + z × (demand spread × √lead time), where z comes from the service level you pick (1.64 for 95%): the standard base-stock target (Silver, Pyke and Thomas, 2016). The lead time is order delay plus shipping delay (the factory, which produces, has only the shipping delay). The safety stock is set once from the spread of demand; the forecast is the average of the last few weeks you choose, of the orders the stage receives or, with information sharing, of customer demand. Forecasting from orders is exactly how the bullwhip starts (Lee, Padmanabhan and Whang, 1997). "Balanced to my costs" sets the service level to the critical ratio, shortage ÷ (shortage + holding): the point where one more unit of target saves as much shortage cost as it adds in holding cost.</p>
+      <p><strong>Bullwhip ratio.</strong> The variance of a stage's orders divided by the variance of customer demand (Chen, Drezner, Ryan and Simchi-Levi, 2000). 1.0 means orders are exactly as steady as demand. Chen and colleagues show it grows with the lead time and shrinks as the forecast window lengthens, which the forecast-window check shows for your settings.</p>
+      <p><strong>Smoothing.</strong> The proportional order-up-to rule orders the forecast plus a fraction of the remaining gap between the target and the inventory position (Disney and Towill, 2003), so with steady demand it orders exactly demand. The tool tries factors from 0.2 to 1.0 and keeps the cheapest at your stage; near ties go to the calmer orders.</p>
       <p><strong>The anchoring bot.</strong> In Play mode, a teammate can use the anchoring-and-adjustment heuristic Sterman (1989) fitted to real players: expected demand updates by 0.36 of the surprise, and the order adds 0.26 of the gap to the target stock, counting only 0.34 of the supply line. It is the pattern real people fall into, and it whipsaws the chain.</p>
+      </div>
     </details>
-  </div>
+    <p class="footnote">The experiments behind this tool (the Python engine checked against the page, the classic-game replication, and how far smoothing goes before it backfires) are in <a href="https://github.com/omidgolchin/ordering-policy-tester#research-notes">Research notes</a>.</p>
+  </section>
 
   <!-- ================= Play mode ================= -->
-  <div id="playMode" hidden>
+  <section id="playMode" hidden>
     <div class="work">
-      <form class="panel inputs" id="playInputs">
+      <form class="panel" id="playInputs" novalidate onsubmit="return false">
+        <div class="panel-head"><h2>Your team</h2></div>
+        <div class="fields">
         <div class="field">
           <label for="playRole">You play</label>
           <select id="playRole">
@@ -222,7 +202,7 @@
           <label for="botC" id="botCLabel">Teammate</label>
           <select id="botC"></select>
         </div>
-        <div class="field">
+        <div class="field full">
           <label for="playDemand">Customer demand</label>
           <select id="playDemand">
             <option value="step">Steady, then steps up (the classic game)</option>
@@ -230,8 +210,9 @@
             <option value="random">Random week to week</option>
           </select>
         </div>
-        <button type="button" class="btn" id="playStart">Start a new game</button>
-        <p class="hint">Costs, delays and the cost model come from the Compare settings on the left of that mode. A game lasts 36 weeks. Each week you see what arrived and what was ordered from you, then you place your order.</p>
+        </div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="primary" id="playStart">Start a new game</button></div>
+        <p class="footnote">Costs, delays and the cost model come from Compare rules. A game lasts 36 weeks: each week you see what arrived and what was ordered from you, then place your order.</p>
       </form>
 
       <section class="panel" id="playPanel" aria-live="polite">
@@ -245,7 +226,7 @@
               <label for="playOrder">Your order this week</label>
               <input type="number" id="playOrder" min="0" max="999" step="1" value="0">
             </div>
-            <button type="button" class="btn" id="playSubmit">Place order</button>
+            <button type="button" class="primary" id="playSubmit">Place order</button>
           </div>
           <p class="err" id="playErr" hidden></p>
         </div>
@@ -254,24 +235,21 @@
       </section>
     </div>
 
-    <section class="panel chart-panel">
+    <section class="panel" style="margin-top:16px">
       <h2>Your game's orders by stage</h2>
-      <p class="panel-note">Every stage's weekly orders, with customer demand underneath. In the classic game this chart fans out: steady demand, wild factory orders.</p>
-      <div id="playChart"></div>
+      <p class="small muted" style="margin-top:0">Every stage's weekly orders, with customer demand underneath. In the classic game this chart fans out: steady demand, wild factory orders.</p>
+      <div class="svgchart" id="playChart"></div>
     </section>
-  </div>
+  </section>
 
   <footer class="kit-footer">
-    <span>Ordering Policy Tester · a small tool by Omid Golchin · Your settings live in the page link; nothing is uploaded.</span>
-    <nav class="kit-nav" aria-label="More tools">
-      <a href="../bayesian-ab-lab/">Test Sizing</a>
-      <a href="../queue-simulator/">Staffing</a>
-      <a href="../experiment-hazard-simulator/">Eval Planner</a>
-      <a href="https://github.com/omidgolchin/ordering-policy-tester">Source and method notes on GitHub</a>
-    </nav>
+    <p class="kit-siblings"><span class="kit-siblings-label">More tools:</span>
+      <a href="https://omidgolchin.github.io/bayesian-ab-lab/">A/B Test Decision Tool</a> ·
+      <a href="https://omidgolchin.github.io/queue-simulator/">Call Center Staffing Planner</a> ·
+      <a href="https://omidgolchin.github.io/experiment-hazard-simulator/">Agent Eval Planner</a></p>
+    <p>Built by Omid Golchin · <a href="https://github.com/omidgolchin/ordering-policy-tester">Code, tests and design decisions</a> · Everything runs in your browser; nothing you type is sent anywhere unless you use the AI fill with your own key.</p>
   </footer>
 </main>
-
 <script src="chain.js"></script>
 <script src="tool-common.js"></script>
 <script src="assist-config.js"></script>

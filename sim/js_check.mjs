@@ -9,7 +9,7 @@ const games = [
   { config: { orderDelay: 1, shipDelay: 2, holdingCost: 0.5, backlogCost: 1.0, costModel: "backlog", infoSharing: false, serviceLevel: 0.95 },
     demand: Array(4).fill(4).concat(Array(32).fill(8)),
     policies: [{ type: "out", alpha: 1.0 }, { type: "out", alpha: 1.0 }, { type: "out", alpha: 1.0 }, { type: "out", alpha: 1.0 }] },
-  { config: { orderDelay: 0, shipDelay: 1, holdingCost: 0.25, backlogCost: 2.0, costModel: "lost", infoSharing: false, serviceLevel: 0.9 },
+  { config: { orderDelay: 0, shipDelay: 1, holdingCost: 0.25, backlogCost: 2.0, costModel: "lost", infoSharing: false, serviceLevel: 0.9, forecastWeeks: 5 },
     demand: [5, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12, 12, 9, 5, 2, 2, 5, 9, 12],
     policies: [{ type: "sterman" }, { type: "passthrough" }, { type: "out", alpha: 0.5 }, { type: "scripted", orders: Array(36).fill(7) }] },
   { config: { orderDelay: 0, shipDelay: 0, holdingCost: 1.0, backlogCost: 0.75, costModel: "backlog", infoSharing: true, serviceLevel: 0.99 },

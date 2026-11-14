@@ -16,27 +16,54 @@ listed here.
   the chain starved (fill rates near 0.3 even with generous targets).
   In the weekly rhythm of the Beer Game a stage sees this week's
   incoming order, ships, then orders — so the policy reads the state at
-  that point. Fill rates and costs became textbook-plausible after the
-  change.
-- **No-sharing demand estimates use an expanding window.** Each stage
-  plans against the mean and spread of all incoming orders received so
-  far. Trailing windows (6–16 weeks) were tried; they did not fix the
-  post-step starvation (it is upstream-driven) and added a parameter
-  nobody could explain. Expanding estimates are also what makes
-  pass-through's calm and order-up-to's target-chasing legible.
-- **Lead time in the target formula is max(order + shipping delay, 1).**
-  With both delays at zero, goods ordered this week still land next
-  week in the simulation's rhythm, so a target covering zero weeks
-  would order nothing and stock out by construction.
+  that point.
+- **The chain opens in the rules' steady state (revised).** The first
+  version opened like Sterman's game, 12 units on hand and a flow of 4.
+  An order-up-to target with no demand spread wants no stock on hand,
+  so every order-up-to stage opened by shedding 12 units: the factory
+  ordered nothing for 14 weeks on flat demand, and the classic game's
+  factory bullwhip read x120, mostly the opening. Now the opening flow
+  is the median of the first four weeks of demand and every stage
+  starts at its safety stock; a test holds flat demand at zero cost
+  for every rule, lead time and sharing setting.
+- **Safety stock is fixed at planning time; the forecast moves.** The
+  target is forecast x L + z x sigma x sqrt(L), with sigma the spread
+  of customer demand. Re-estimating sigma from a stage's own orders
+  made targets swing with the bullwhip itself; a fixed safety-stock
+  parameter is how inventory systems are run, and it keeps the
+  mechanism the tool is about (forecasting from orders) isolated.
+- **Forecasts are a moving average of the last p weeks, p visible.**
+  The first version used all history, which reacts to a step for the
+  rest of the game. A p-week moving average is the textbook setup of
+  Chen, Drezner, Ryan and Simchi-Levi (2000), whose closed form
+  1 + 2L/p + 2L^2/p^2 the engine reproduces (tested). p defaults to 8
+  and is an input, because it moves the factory's bullwhip as much as
+  the choice of rule does.
+- **Smoothing is proportional order-up-to: forecast plus alpha x gap.**
+  The first version ordered alpha x (target - position), which under-
+  orders every week until a backlog builds to compensate; on flat
+  demand at alpha 0.4 it ordered 2, then 4, then 5 against demand of 6.
+  Disney and Towill's rule adds the forecast back, so it orders exactly
+  demand in steady state and alpha 1 is still plain order-up-to.
+- **Lead times are effective lead times.** A shipment lands the week
+  after it is made at the earliest, so a stage's lead time is order
+  delay + max(shipping delay, 1); the factory produces rather than
+  orders, so its lead time is max(shipping delay, 1). The first version
+  gave the factory the order delay too, so it held extra stock forever.
+- **Smoothing at factor 1.0 is not a second rule, and near ties go to
+  the calmer orders.** When the best smoothing factor is 1.0 the
+  "smoothed" rule is order-up-to itself; it no longer creates a tie
+  with it. Within 2% of the cheapest cost, the verdict picks the rule
+  with the lower bullwhip at your stage, as its text always said.
 - **Round-half-up everywhere, in both engines.** Quantities are whole
   units; JavaScript's Math.round and Python's round() disagree on
   halves, so both engines use floor(x + 0.5). The normal CDF is the
   same Abramowitz–Stegun polynomial in both, and the inverse is the
   same bisection, so JS and Python agree to float precision — the
   agreement test holds them to it.
-- **Verdict "warn" fires when the best rule fills under 75%.** In this
-  engine even good rules fill only ~70–80% right after a demand step;
-  a 90% threshold would make warn meaningless (always on). 75% marks
+- **Verdict "warn" fires when the best rule fills under 75%.** After a
+  lasting demand step even the best rule fills only about 60% over the
+  game; on noisy demand good rules fill above 90%. 75% marks
   "more than a quarter of orders unfilled", which is a genuine service
   problem worth its own verdict state. Warn outranks the tie state:
   a tie between two rules that both stock out is a warning first.
@@ -65,9 +92,13 @@ listed here.
   a rule's number at the end; the suggestion keeps first-time players
   from drowning in week 3. Overriding it is the interesting move, and
   the snapshot/restore turn flow makes overrides exact.
-- **URL state is skipped on file:// pages.** The shared kit's parameter
-  helper cannot parse a file: URL; the app guards its calls so the
-  tool also works opened as a local file (GitHub Pages, the real home,
-  uses https and is unaffected).
+- **URL state is skipped on file:// pages.** The app writes the link
+  only on http(s) pages, so the tool also works opened as a local file.
+- **The service level can come from your costs.** "Balanced to my
+  costs" uses the critical ratio shortage / (shortage + holding); with a
+  fixed service level picked instead, a check prices the gap between
+  the two. On a game with a demand step the higher level often wins,
+  because the forecast lags; the check says so rather than assuming
+  the textbook ratio is always right.
 - **Requirements are pytest only.** The engine is pure Python (no
   NumPy/SciPy), so the fresh-venv install stays small and honest.

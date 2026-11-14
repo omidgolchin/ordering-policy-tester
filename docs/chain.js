@@ -28,28 +28,34 @@
  *      after orderDelay weeks; the factory's production orders
  *      complete after shipDelay weeks.
  *
- * Pipelines start filled at a steady flow of INIT_FLOW units a week and
- * every stage starts with INIT_INV units on hand (the classic Beer Game
- * opening), so a chain facing steady demand starts in steady state.
+ * The chain opens in steady state: the opening flow F is the median of
+ * the first four weeks of demand, every pipeline is full at F a week, and
+ * every stage starts with its safety stock on hand, so steady demand
+ * keeps the chain exactly steady. Lead times are effective: a stage's is
+ * orderDelay + max(shipDelay, 1) (a shipment lands at the earliest the
+ * week after it is made); the factory's is max(shipDelay, 1).
  *
  * Inventory position = on-hand inventory + supply line - backlog.
  *
- * Policies: passthrough (order the incoming order), out (order-up-to
- * with a proportional smoothing factor alpha; 1 is the plain rule),
+ * Policies: passthrough (order the incoming order), out (order-up-to,
+ * mu + alpha * (S - position - mu), with mu the stage's demand estimate:
+ * alpha 1 is the plain rule, smaller alpha the proportional order-up-to
+ * rule of Disney and Towill, which in steady state orders exactly demand),
  * sterman (Sterman 1989 anchoring heuristic, theta 0.36, alpha 0.26,
  * beta 0.34), scripted (a fixed list of orders, by week).
  *
- * The order-up-to target is S = mu * L + z * sigma * sqrt(L), with
- * L = max(orderDelay + shipDelay, 1). With information sharing every
- * stage plans against the customer demand series; without it, stages
- * plan against an expanding estimate of their own incoming orders.
+ * The order-up-to target is S = mu * L + z * sigma * sqrt(L), with L the
+ * stage's lead time and sigma the spread of customer demand: the safety
+ * stock is set at planning time and held fixed. mu is customer demand's
+ * mean with information sharing, otherwise the running mean of the
+ * stage's own incoming orders.
  */
 (function (g) {
   "use strict";
 
   var STAGES = 4;
-  var INIT_INV = 12;
-  var INIT_FLOW = 4;
+  var OPEN_WEEKS = 4; /* the opening flow is the median of this many first weeks */
+  var FORECAST_WEEKS = 8; /* default moving-average window for the demand forecast */
   var STERMAN_THETA = 0.36, STERMAN_ALPHA = 0.26, STERMAN_BETA = 0.34;
 
   function roundHalfUp(x) { return Math.floor(x + 0.5); }
@@ -84,6 +90,20 @@
     var lt = Math.max(lead, 1);
     return roundHalfUp(mu * lt + z * sigma * Math.sqrt(lt));
   }
+  function safetyStock(sigma, lead, z) {
+    var lt = Math.max(lead, 1);
+    return roundHalfUp(Math.max(0.0, z * sigma * Math.sqrt(lt)));
+  }
+  function openingFlow(demand) {
+    var head = demand.slice(0, OPEN_WEEKS).sort(function (a, b) { return a - b; });
+    return head.length ? head[Math.floor((head.length - 1) / 2)] | 0 : 0;
+  }
+  function stageLeads(od, sd) {
+    var ship = Math.max(sd | 0, 1), out = [];
+    for (var i = 0; i < STAGES - 1; i++) out.push((od | 0) + ship);
+    out.push(ship);
+    return out;
+  }
   function quantile(sortedXs, q) {
     var n = sortedXs.length;
     if (!n) return 0.0;
@@ -96,28 +116,31 @@
   function zeros(n) { var a = []; for (var i = 0; i < n; i++) a.push(0); return a; }
 
   function createGame(config, demand, policies) {
-    var od = config.orderDelay | 0, sd = config.shipDelay | 0;
+    var od = config.orderDelay | 0, sd = config.shipDelay | 0, ship = Math.max(sd, 1);
     var weeks = demand.length;
-    var size = weeks + od + sd + 2;
+    var size = weeks + od + ship + 2;
+    var flow = openingFlow(demand);
     var inc = [], arr = [], supply = [], i, t;
     for (i = 0; i < STAGES; i++) { inc.push(zeros(size)); arr.push(zeros(size)); }
-    for (i = 1; i < STAGES; i++) for (t = 0; t < od; t++) inc[i][t] = INIT_FLOW;
-    for (i = 0; i < STAGES; i++) for (t = 0; t < sd; t++) arr[i][t] = INIT_FLOW;
-    for (i = 0; i < STAGES; i++) supply.push(i < STAGES - 1 ? INIT_FLOW * od + INIT_FLOW * sd : INIT_FLOW * sd);
+    for (i = 1; i < STAGES; i++) for (t = 0; t < od; t++) inc[i][t] = flow;
+    for (i = 0; i < STAGES; i++) for (t = 0; t < ship; t++) arr[i][t] = flow;
+    for (i = 0; i < STAGES; i++) supply.push(i < STAGES - 1 ? flow * od + flow * ship : flow * ship);
     var ds = demandStats(demand);
+    var z = normInv(config.serviceLevel), leads = stageLeads(od, sd);
+    var safety = leads.map(function (L) { return safetyStock(ds[1], L, z); });
     return {
       config: Object.assign({}, config), demand: demand.slice(), policies: policies,
       weeks: weeks, t: 0,
-      inv: [INIT_INV, INIT_INV, INIT_INV, INIT_INV], backlog: [0, 0, 0, 0], supply: supply,
+      inv: safety.slice(), backlog: [0, 0, 0, 0], supply: supply,
       inc: inc, arr: arr, arrCarry: [0, 0, 0, 0],
-      hist: [[], [], [], []], dHat: [INIT_FLOW, INIT_FLOW, INIT_FLOW, INIT_FLOW],
+      hist: [[], [], [], []], dHat: [flow, flow, flow, flow],
       lastIncoming: [0, 0, 0, 0],
       orders: [[], [], [], []], incomingLog: [[], [], [], []],
       invLog: [[], [], [], []], backlogLog: [[], [], [], []],
       shipped: [0, 0, 0, 0], owed: [0, 0, 0, 0], lost: [0, 0, 0, 0],
       cost: [0.0, 0.0, 0.0, 0.0], customerReceived: 0,
       demandMu: ds[0], demandSd: ds[1],
-      z: normInv(config.serviceLevel), lead: od + sd
+      z: z, flow: flow, leads: leads, safety: safety
     };
   }
 
@@ -127,16 +150,14 @@
     else state.arr[i][week] += amount;
   }
 
-  function stageTarget(state, i) {
-    var mu, sigma;
-    if (state.config.infoSharing) { mu = state.demandMu; sigma = state.demandSd; }
-    else {
-      var hist = state.hist[i];
-      if (hist.length) { mu = mean(hist); sigma = Math.sqrt(pvariance(hist)); }
-      else { mu = INIT_FLOW; sigma = 0.0; }
-    }
-    return targetFor(mu, sigma, state.lead, state.z);
+  function stagePlan(state, i) {
+    var seen = state.config.infoSharing ? state.demand.slice(0, state.t + 1) : state.hist[i];
+    var p = state.config.forecastWeeks == null ? FORECAST_WEEKS : state.config.forecastWeeks | 0;
+    var win = p > 0 ? seen.slice(-p) : seen;
+    var mu = win.length ? mean(win) : state.flow;
+    return [mu, targetFor(mu, state.demandSd, state.leads[i], state.z)];
   }
+  function stageTarget(state, i) { return stagePlan(state, i)[1]; }
 
   function policyOrder(state, i) {
     var pol = state.policies[i], kind = pol.type, inc = state.lastIncoming[i];
@@ -150,9 +171,9 @@
     }
     if (kind === "out") {
       var alpha = pol.alpha == null ? 1.0 : pol.alpha;
-      var s = stageTarget(state, i);
+      var plan = stagePlan(state, i), mu = plan[0], s = plan[1];
       var position = state.inv[i] + state.supply[i] - state.backlog[i];
-      return Math.max(0, roundHalfUp(alpha * (s - position)));
+      return Math.max(0, roundHalfUp(mu + alpha * (s - position - mu)));
     }
     throw new Error("unknown policy type: " + kind);
   }
@@ -347,7 +368,10 @@
     out.altModelBest = altBest;
     out.altModelCosts = altCosts;
     var ds = demandStats(seriesList[0]);
-    out.target = targetFor(ds[0], ds[1], config.orderDelay + config.shipDelay, normInv(config.serviceLevel));
+    var leadY = stageLeads(config.orderDelay, config.shipDelay)[yourStage];
+    out.lead = leadY;
+    out.target = targetFor(ds[0], ds[1], leadY, normInv(config.serviceLevel));
+    out.safety = safetyStock(ds[1], leadY, normInv(config.serviceLevel));
     out.demandMu = ds[0];
     out.demandSd = ds[1];
     return out;
@@ -355,14 +379,20 @@
   function recommend(evaluation) {
     var rules = evaluation.rules;
     var ranked = Object.keys(rules).sort(function (a, b) { return rules[a].yourCost - rules[b].yourCost; });
-    var bestKey = ranked[0], best = rules[bestKey];
-    var tie = ranked.length > 1 && rules[ranked[1]].yourCost <= best.yourCost * 1.02;
+    /* smoothing at full strength (1.0) is plain order-up-to, not a second rule */
+    if (rules.out && rules.smooth && rules.smooth.alpha === 1.0) ranked = ranked.filter(function (k) { return k !== "smooth"; });
+    var band = ranked.filter(function (k) { return rules[k].yourCost <= rules[ranked[0]].yourCost * 1.02; });
+    var tie = band.length > 1;
+    /* a near tie (within 2% of the cheapest) breaks toward the calmer orders */
+    var calm = function (k) { var b = rules[k].yourBullwhip; return b === null || b === undefined ? 0.0 : b; };
+    var bestKey = band.reduce(function (a, k) { return calm(k) < calm(a) ? k : a; }, band[0]), best = rules[bestKey];
+    var others = ranked.filter(function (k) { return k !== bestKey; });
     var cls = best.fillRate < 0.75 ? "warn" : (tie ? "accent" : "good");
-    return { rule: bestKey, cls: cls, tie: tie, runnerUp: ranked.length > 1 ? ranked[1] : null };
+    return { rule: bestKey, cls: cls, tie: tie, runnerUp: others.length ? others[0] : null };
   }
 
   var api = {
-    STAGES: STAGES, INIT_INV: INIT_INV, INIT_FLOW: INIT_FLOW,
+    STAGES: STAGES, OPEN_WEEKS: OPEN_WEEKS, FORECAST_WEEKS: FORECAST_WEEKS, openingFlow: openingFlow, stageLeads: stageLeads, safetyStock: safetyStock,
     STERMAN_THETA: STERMAN_THETA, STERMAN_ALPHA: STERMAN_ALPHA, STERMAN_BETA: STERMAN_BETA,
     roundHalfUp: roundHalfUp, normCdf: normCdf, normInv: normInv,
     mean: mean, pvariance: pvariance, demandStats: demandStats, targetFor: targetFor,

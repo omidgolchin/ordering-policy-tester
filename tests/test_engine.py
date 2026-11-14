@@ -11,6 +11,7 @@ from sim.chain import (
     norm_inv,
     policy_order,
     simulate,
+    stage_plan,
     stage_target,
     target_for,
 )
@@ -73,8 +74,10 @@ def test_smoothing_factor_one_equals_out():
     gap = stage_target(state, 0) - (4 + 3 - 1)
     assert gap > 0
     assert policy_order(state, 0) == gap
+    # proportional order-up-to: the forecast plus half the remaining gap
     state["policies"][0] = {"type": "out", "alpha": 0.5}
-    assert policy_order(state, 0) == math.floor(0.5 * gap + 0.5)
+    mu = stage_plan(state, 0)[0]
+    assert policy_order(state, 0) == math.floor(mu + 0.5 * (gap - mu) + 0.5)
 
 
 def test_scripted_game_is_exact():
@@ -127,3 +130,66 @@ def test_information_sharing_lowers_factory_bullwhip():
     on = simulate(dict(BASE, infoSharing=True), STEP, [OUT] * 4)
     assert on["stages"][3]["bullwhip"] < off["stages"][3]["bullwhip"]
     assert on["chainCost"] < off["chainCost"]
+
+
+def test_steady_demand_keeps_the_chain_steady():
+    """The opening is the rules' steady state: with demand that never
+    moves, every stage orders exactly the demand from week one, nobody
+    is ever short, and stock never moves, at any lead time, with or
+    without information sharing. (Sterman's 12-unit opening fails this:
+    an order-up-to stage with no demand spread holds 12 units too many
+    and opens by ordering nothing.)"""
+    for od, sd in [(0, 0), (1, 0), (0, 2), (1, 2), (2, 3)]:
+        for sharing in (False, True):
+            cfg = dict(BASE, orderDelay=od, shipDelay=sd, infoSharing=sharing)
+            for pols in ([OUT] * 4, [PASS] + [OUT] * 3, [{"type": "out", "alpha": 0.4}] * 4):
+                r = simulate(cfg, [6] * 30, pols)
+                for s in r["stages"]:
+                    assert s["orders"] == [6] * 30, (od, sd, sharing, s["orders"][:8])
+                    assert sum(s["backlogEnd"]) == 0
+                    assert len(set(s["invEnd"])) == 1
+                assert r["chainCost"] == 0.0
+
+
+def test_effective_lead_times():
+    """A shipment lands the week after it is made at the earliest, so a
+    zero shipping delay still takes one week; the factory produces, so
+    its lead time has no order delay."""
+    from sim.chain import stage_leads
+    assert stage_leads(1, 2) == [3, 3, 3, 2]
+    assert stage_leads(2, 0) == [3, 3, 3, 1]
+    assert stage_leads(0, 0) == [1, 1, 1, 1]
+
+
+def test_forecast_window_moving_average():
+    """Without sharing, a stage forecasts mean demand as the moving
+    average of its last forecastWeeks incoming orders (0 = all of them);
+    with sharing, of customer demand seen so far. A longer window calms
+    the factory on noisy demand (Chen, Drezner, Ryan and Simchi-Levi,
+    2000: the bullwhip bound falls as the window grows)."""
+    state = create_game(dict(BASE, forecastWeeks=2), STEP, [OUT] * 4)
+    state["hist"][1] = [4, 4, 8, 10]
+    assert stage_target(state, 1) == target_for(9.0, state["demandSd"], 3, state["z"])
+    state["config"]["forecastWeeks"] = 0
+    assert stage_target(state, 1) == target_for(6.5, state["demandSd"], 3, state["z"])
+    import random
+    rng = random.Random(3)
+    noisy = [max(0, round(rng.gauss(8, 3))) for _ in range(36)]
+    short = simulate(dict(BASE, forecastWeeks=3), noisy, [OUT] * 4)
+    long_ = simulate(dict(BASE, forecastWeeks=12), noisy, [OUT] * 4)
+    assert long_["stages"][3]["bullwhip"] < short["stages"][3]["bullwhip"]
+
+
+def test_retailer_bullwhip_matches_chen_closed_form():
+    """Chen, Drezner, Ryan and Simchi-Levi (2000): with independent
+    demand, a p-week moving-average forecast and lead time L, an
+    order-up-to retailer's bullwhip ratio is 1 + 2L/p + 2L^2/p^2. The
+    engine reproduces it over a long run (rounding to whole units is the
+    only gap)."""
+    import random
+    rng = random.Random(11)
+    for p in (4, 8, 16):
+        demand = [max(0, round(rng.gauss(50, 5))) for _ in range(3000)]
+        r = simulate(dict(BASE, forecastWeeks=p), demand, [OUT] * 4)
+        theory = 1 + 2 * 3 / p + 2 * 9 / p ** 2
+        assert abs(r["stages"][0]["bullwhip"] - theory) / theory < 0.03, (p, r["stages"][0]["bullwhip"], theory)

@@ -26,9 +26,21 @@ in downstream-to-upstream order, and each stage's turn is:
      upstream stage after `order_delay` weeks; the factory's production
      orders complete after `ship_delay` weeks.
 
-Pipelines start filled at a steady flow of INIT_FLOW units a week and
-every stage starts with INIT_INV units on hand (the classic Beer Game
-opening), so a chain facing steady demand starts in steady state.
+The chain opens in steady state. The opening flow F is the median of the
+first four weeks of demand; every pipeline is full at F a week, and every
+stage starts with its safety stock on hand, so a chain facing steady
+demand stays exactly steady and any turbulence is the rules' doing.
+(Sterman's game opens with 12 units on hand and a flow of 4, which is
+12 units more than an order-up-to target with no demand spread wants:
+those rules would open by ordering nothing, and the bullwhip measured
+would be the opening's, not the rule's.)
+
+Lead times are effective lead times. An order placed in week t reaches
+the supplier after order_delay weeks; goods shipped arrive after
+max(ship_delay, 1) weeks, since a shipment made in a week lands at the
+earliest the next week. A stage's lead time is order_delay +
+max(ship_delay, 1); the factory, which produces rather than orders, has
+max(ship_delay, 1).
 
 Inventory position = on-hand inventory + supply line - backlog, where the
 supply line is everything the stage has ordered that is not yet in its
@@ -37,9 +49,14 @@ the factory, production in progress).
 
 Policies (one per stage):
   passthrough  order exactly the incoming order.
-  out          order-up-to: order alpha * (S - inventory position),
-               rounded, never below 0. alpha 1 is the plain rule; smaller
-               alpha is the proportional smoothing rule of Disney and
+  out          order-up-to: order mu + alpha * (S - inventory position - mu),
+               rounded, never below 0, with mu the stage's demand
+               estimate. alpha 1 is the plain rule (order S - position);
+               smaller alpha is the proportional order-up-to (POUT) rule of
+               Disney and Towill: the forecast plus only part of the gap,
+               so in steady state it orders exactly demand. (Scaling the
+               whole order by alpha instead would under-order every week
+               until a backlog built up to compensate.) Disney and
                Towill. S is the computed target (below).
   sterman      Sterman's (1989) anchoring heuristic with his estimated
                parameters (theta 0.36, alpha 0.26, beta 0.34): expected
@@ -48,20 +65,21 @@ Policies (one per stage):
                inventory, discounted by the supply line.
   scripted     a fixed list of orders, by week (tests and benchmarks).
 
-The order-up-to target is S = mu * L + z * sigma * sqrt(L), with
-L = max(order_delay + ship_delay, 1) (even with both delays at zero the
-goods land the following week), z the service-level quantile, and mu and
-sigma the mean and population standard deviation of the demand the stage
-plans against. With information sharing every stage plans against the
-customer demand series. Without it, stages plan against an expanding
-estimate of their own incoming orders, which is all they can see.
+The order-up-to target is S = mu * L + z * sigma * sqrt(L), with L the
+stage's lead time, z the service-level quantile and sigma the population
+standard deviation of customer demand. The safety stock z * sigma *
+sqrt(L) is set at planning time and held fixed, as an inventory system's
+safety-stock parameter is. mu is the mean demand the stage plans
+against: with information sharing, customer demand; without it, the
+running mean of the stage's own incoming orders, which is all it can
+see (the demand-signal processing of Lee, Padmanabhan and Whang, 1997).
 """
 
 import math
 
 STAGES = 4
-INIT_INV = 12
-INIT_FLOW = 4
+OPEN_WEEKS = 4  # the opening flow is the median of this many first weeks
+FORECAST_WEEKS = 8  # default moving-average window for the demand forecast
 
 STERMAN_THETA = 0.36
 STERMAN_ALPHA = 0.26
@@ -112,6 +130,13 @@ def target_for(mu, sigma, lead, z):
     return int(round_half_up(mu * lt + z * sigma * math.sqrt(lt)))
 
 
+def safety_stock(sigma, lead, z):
+    """The safety-stock part of target_for, rounded the same way, so a
+    stage with an integer mean sits exactly at its target."""
+    lt = max(lead, 1)
+    return int(round_half_up(max(0.0, z * sigma * math.sqrt(lt))))
+
+
 def quantile(sorted_xs, q):
     n = len(sorted_xs)
     if n == 0:
@@ -124,43 +149,61 @@ def median(xs):
     return quantile(sorted(xs), 0.5)
 
 
+def opening_flow(demand):
+    """The steady flow the chain opens with: the median of the first
+    OPEN_WEEKS weeks of demand (the lower median for an even count)."""
+    head = sorted(demand[:OPEN_WEEKS])
+    return int(head[(len(head) - 1) // 2]) if head else 0
+
+
+def stage_leads(order_delay, ship_delay):
+    """Effective lead time of each stage (see the module notes)."""
+    ship = max(int(ship_delay), 1)
+    return [int(order_delay) + ship] * (STAGES - 1) + [ship]
+
+
 def create_game(config, demand, policies):
     """Initial state. config keys: orderDelay, shipDelay, holdingCost,
     backlogCost, costModel ('backlog' or 'lost'), infoSharing (bool),
     serviceLevel (0 to 1). demand: the customer demand series (ints).
     policies: one policy dict per stage."""
     od, sd = int(config["orderDelay"]), int(config["shipDelay"])
+    ship = max(sd, 1)
     weeks = len(demand)
-    size = weeks + od + sd + 2
+    size = weeks + od + ship + 2
+    flow = opening_flow(demand)
     inc = [[0] * size for _ in range(STAGES)]
     arr = [[0] * size for _ in range(STAGES)]
     for i in range(1, STAGES):
         for t in range(od):
-            inc[i][t] = INIT_FLOW
+            inc[i][t] = flow
     for i in range(STAGES):
-        for t in range(sd):
-            arr[i][t] = INIT_FLOW
+        for t in range(ship):
+            arr[i][t] = flow
     supply = []
     for i in range(STAGES):
         if i < STAGES - 1:
-            supply.append(INIT_FLOW * od + INIT_FLOW * sd)
+            supply.append(flow * od + flow * ship)
         else:
-            supply.append(INIT_FLOW * sd)
+            supply.append(flow * ship)
     mu_d, sd_d = demand_stats(demand)
+    z = norm_inv(float(config["serviceLevel"]))
+    leads = stage_leads(od, sd)
+    safety = [safety_stock(sd_d, lead, z) for lead in leads]
     return {
         "config": dict(config),
         "demand": list(demand),
         "policies": policies,
         "weeks": weeks,
         "t": 0,
-        "inv": [INIT_INV] * STAGES,
+        "inv": list(safety),
         "backlog": [0] * STAGES,
         "supply": supply,
         "inc": inc,
         "arr": arr,
         "arrCarry": [0] * STAGES,
         "hist": [[] for _ in range(STAGES)],
-        "dHat": [float(INIT_FLOW)] * STAGES,
+        "dHat": [float(flow)] * STAGES,
         "lastIncoming": [0] * STAGES,
         "orders": [[] for _ in range(STAGES)],
         "incomingLog": [[] for _ in range(STAGES)],
@@ -173,8 +216,10 @@ def create_game(config, demand, policies):
         "customerReceived": 0,
         "demandMu": mu_d,
         "demandSd": sd_d,
-        "z": norm_inv(float(config["serviceLevel"])),
-        "lead": od + sd,
+        "z": z,
+        "flow": flow,
+        "leads": leads,
+        "safety": safety,
     }
 
 
@@ -189,18 +234,20 @@ def _sched(sched, i, week, amount, state):
         sched[i][week] += amount
 
 
+def stage_plan(state, i):
+    """(mu, S): the mean demand stage i plans against and its
+    order-up-to target, under its information mode."""
+    cfg = state["config"]
+    seen = state["demand"][:state["t"] + 1] if cfg["infoSharing"] else state["hist"][i]
+    p = int(cfg.get("forecastWeeks", FORECAST_WEEKS))
+    window = seen[-p:] if p > 0 else seen
+    mu = mean(window) if window else float(state["flow"])
+    return mu, target_for(mu, state["demandSd"], state["leads"][i], state["z"])
+
+
 def stage_target(state, i):
     """The order-up-to target for stage i under its information mode."""
-    cfg = state["config"]
-    if cfg["infoSharing"]:
-        mu, sigma = state["demandMu"], state["demandSd"]
-    else:
-        hist = state["hist"][i]
-        if hist:
-            mu, sigma = mean(hist), math.sqrt(pvariance(hist))
-        else:
-            mu, sigma = float(INIT_FLOW), 0.0
-    return target_for(mu, sigma, state["lead"], state["z"])
+    return stage_plan(state, i)[1]
 
 
 def policy_order(state, i):
@@ -222,9 +269,9 @@ def policy_order(state, i):
         return max(0, int(round_half_up(raw)))
     if kind == "out":
         alpha = float(pol.get("alpha", 1.0))
-        target = stage_target(state, i)
+        mu, target = stage_plan(state, i)
         position = state["inv"][i] + state["supply"][i] - state["backlog"][i]
-        return max(0, int(round_half_up(alpha * (target - position))))
+        return max(0, int(round_half_up(mu + alpha * (target - position - mu))))
     raise ValueError("unknown policy type: %s" % kind)
 
 
@@ -412,7 +459,10 @@ def evaluate_series(config, series_list, your_stage):
     out["altModelCosts"] = alt_rules
     # the target the checks strip quotes (full-information target)
     mu, sigma = demand_stats(series_list[0])
-    out["target"] = target_for(mu, sigma, config["orderDelay"] + config["shipDelay"], norm_inv(float(config["serviceLevel"])))
+    lead = stage_leads(config["orderDelay"], config["shipDelay"])[your_stage]
+    out["lead"] = lead
+    out["target"] = target_for(mu, sigma, lead, norm_inv(float(config["serviceLevel"])))
+    out["safety"] = safety_stock(sigma, lead, norm_inv(float(config["serviceLevel"])))
     out["demandMu"] = mu
     out["demandSd"] = sigma
     return out
@@ -432,13 +482,24 @@ def recommend(evaluation):
     rule still leaves many orders unfilled)."""
     rules = evaluation["rules"]
     ranked = sorted(rules, key=lambda k: rules[k]["yourCost"])
-    best_key = ranked[0]
+    # smoothing at full strength (factor 1.0) is plain order-up-to, not a
+    # second rule: it cannot be the runner-up that makes a tie
+    if "out" in rules and rules.get("smooth", {}).get("alpha") == 1.0:
+        ranked = [k for k in ranked if k != "smooth"]
+    # a near tie (within 2% of the cheapest) breaks toward the calmer orders
+    band = [k for k in ranked if rules[k]["yourCost"] <= rules[ranked[0]]["yourCost"] * 1.02]
+    tie = len(band) > 1
+
+    def calm(k):
+        b = rules[k].get("yourBullwhip")
+        return 0.0 if b is None else b
+    best_key = min(band, key=calm)
     best = rules[best_key]
-    tie = len(ranked) > 1 and rules[ranked[1]]["yourCost"] <= best["yourCost"] * 1.02
+    others = [k for k in ranked if k != best_key]
     if best["fillRate"] < 0.75:
         cls = "warn"
     elif tie:
         cls = "accent"
     else:
         cls = "good"
-    return {"rule": best_key, "cls": cls, "tie": tie, "runnerUp": ranked[1] if len(ranked) > 1 else None}
+    return {"rule": best_key, "cls": cls, "tie": tie, "runnerUp": others[0] if others else None}
