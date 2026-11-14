@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run tests (no API calls; JS agreement uses node)
+        run: pytest -q
+      - name: Smoke test — the classic game simulates and costs something
+        run: python -c "from sim.chain import simulate; cfg = dict(orderDelay=1, shipDelay=2, holdingCost=0.5, backlogCost=1.0, costModel='backlog', infoSharing=False, serviceLevel=0.95); r = simulate(cfg, [4]*4 + [8]*32, [{'type': 'out', 'alpha': 1.0}]*4); assert r['chainCost'] > 0 and r['stages'][0]['bullwhip'] > 1"
