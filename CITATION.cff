@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this tool, please cite it as below."
+title: "Supply Chain Ordering Policy Tester: which ordering rule should one stage of a supply chain use?"
+abstract: "An interactive simulator of a four-stage supply chain (the Beer Game chain) that compares order-up-to, smoothed order-up-to and pass-through ordering rules on stage cost and the bullwhip effect, with built-in checks for the order-up-to target, information sharing, the backlog-vs-lost-sales cost model and the smoothing trade-off, plus a playable 36-week ordering game against rule-based and human-heuristic bots. All data are simulated."
+authors:
+  - family-names: "Golchin"
+    given-names: "Omid"
+type: software
+license: MIT
+repository-code: "https://github.com/omidgolchin/ordering-policy-tester"
+keywords:
+  - supply-chain
+  - bullwhip-effect
+  - beer-game
+  - inventory
+  - base-stock
+  - simulation

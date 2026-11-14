@@ -1,0 +1,199 @@
+[
+{
+"expected": {
+"backlogCost": 1.0,
+"holdingCost": 0.5,
+"orderDelay": 1,
+"shipDelay": 2,
+"stage": "wholesaler"
+},
+"id": "t01",
+"text": "I run the stockroom for a wholesaler. Our orders take a week to reach the distributor, then two weeks on the truck. Holding a unit costs us $0.50 a week, and being short costs $1.00 per unit per week."
+},
+{
+"expected": {
+"orderDelay": 0,
+"shipDelay": 3,
+"stage": "retailer"
+},
+"id": "t02",
+"text": "Total lead time from placing an order to having it on the shelf is three weeks. I manage ordering for our retail shop."
+},
+{
+"expected": {
+"holdingCost": 0.25,
+"orderDelay": 0,
+"shipDelay": 3,
+"stage": "distributor"
+},
+"id": "t03",
+"text": "We're a distributor. The factory sees our order the same week we send it, but production and shipping take three weeks. Storage runs $0.25 per unit per week."
+},
+{
+"expected": {
+"backlogCost": 2.0,
+"holdingCost": 0.7,
+"stage": "retailer"
+},
+"id": "t04",
+"text": "I order for our store. Keeping one unit in the stockroom costs about ten cents a day, and every week we are short a unit it costs us two dollars."
+},
+{
+"expected": {
+"orderDelay": 0,
+"shipDelay": 2,
+"stage": "distributor"
+},
+"id": "t05",
+"text": "We buy straight from the factory and sell on to wholesalers. Orders reach the factory within the week; goods come back in two weeks."
+},
+{
+"expected": {
+"orderDelay": 0,
+"shipDelay": 2,
+"stage": "retailer"
+},
+"id": "t06",
+"text": "Our corner shop sells to walk-in customers. Our supplier is the regional wholesaler, and deliveries take two weeks from the day we order."
+},
+{
+"expected": {
+"demand": [
+10,
+12,
+11,
+14,
+13,
+15,
+14,
+16
+],
+"orderDelay": 1,
+"shipDelay": 2,
+"stage": "retailer"
+},
+"id": "t07",
+"text": "I'm the retailer in this chain. The last eight weeks of customer demand were 10, 12, 11, 14, 13, 15, 14, 16. Lead time is one week for the order to get through plus two weeks shipping."
+},
+{
+"expected": {
+"holdingCost": 0.3,
+"stage": "wholesaler"
+},
+"id": "t08",
+"text": "We sell about 40 units a week on average. Holding costs $0.30 per unit per week for us at the wholesale level."
+},
+{
+"expected": {
+"backlogCost": 5.0,
+"orderDelay": 0,
+"shipDelay": 4,
+"stage": "retailer"
+},
+"id": "t09",
+"text": "Every lost sale costs us roughly $5 in margin and goodwill. I'm ordering for a retail chain; our lead time is four weeks all in."
+},
+{
+"expected": {},
+"id": "t10",
+"text": "We are somewhere in the middle of the supply chain and honestly just try to keep up with whatever orders come in."
+},
+{
+"expected": {
+"shipDelay": 2,
+"stage": "retailer"
+},
+"id": "t11",
+"text": "Demand roughly doubles every December at our shop, then falls back in January. Shipments from the wholesaler take two weeks."
+},
+{
+"expected": {
+"backlogCost": 1.5,
+"orderDelay": 1,
+"shipDelay": 1,
+"stage": "wholesaler"
+},
+"id": "t12",
+"text": "I'm the wholesaler here. Our distributor takes a week to process any order we send, then it is one week in transit. Shortages cost us $1.50 per unit per week."
+},
+{
+"expected": {
+"shipDelay": 2,
+"stage": "factory"
+},
+"id": "t13",
+"text": "We manufacture the product ourselves and supply the distributors. Production runs take two weeks once an order is scheduled."
+},
+{
+"expected": {
+"holdingCost": 0.5,
+"stage": "distributor"
+},
+"id": "t14",
+"text": "Our warehouse charges work out to $26 per unit per year for holding. We distribute to wholesalers across the region."
+},
+{
+"expected": {
+"backlogCost": 2.0,
+"orderDelay": 0,
+"shipDelay": 3,
+"stage": "wholesaler"
+},
+"id": "t15",
+"text": "We pay $2 for every unit-week we are short. I handle purchasing for a wholesaler; orders go to the distributor, goods arrive three weeks after we order."
+},
+{
+"expected": {
+"backlogCost": 0.8,
+"holdingCost": 0.4,
+"orderDelay": 1,
+"shipDelay": 3,
+"stage": "retailer"
+},
+"id": "t16",
+"text": "Orders take a week to reach our supplier and three weeks to come back. Holding is $0.40 a unit-week; being short is $0.80. I order for the factory outlet store, so I am the retailer."
+},
+{
+"expected": {
+"stage": "distributor"
+},
+"id": "t17",
+"text": "Holding stock is cheap for us and stock-outs are brutal, so we would rather over-order. I run a distribution warehouse between the factory and the wholesalers."
+},
+{
+"expected": {
+"demand": [
+20,
+22,
+19,
+25,
+24,
+28
+],
+"stage": "distributor"
+},
+"id": "t18",
+"text": "Week by week, our customers ordered: week 1: 20, week 2: 22, week 3: 19, week 4: 25, week 5: 24, week 6: 28. We are the distributor in this chain."
+},
+{
+"expected": {
+"holdingCost": 0.6,
+"orderDelay": 0,
+"shipDelay": 2.5,
+"stage": "factory"
+},
+"id": "t19",
+"text": "Lead time is two and a half weeks in total. We are a factory producing to order for our distributors; holding finished goods costs $0.60 per unit per week."
+},
+{
+"expected": {
+"backlogCost": 3.0,
+"holdingCost": 0.2,
+"orderDelay": 2,
+"shipDelay": 1,
+"stage": "retailer"
+},
+"id": "t20",
+"text": "Our retail store's orders sit with the wholesaler for two weeks before they are even looked at, then shipping is another week. A unit on the shelf costs $0.20 a week to keep; a unit we owe a customer costs $3 a week."
+}
+]
