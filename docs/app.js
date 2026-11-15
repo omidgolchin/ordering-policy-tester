@@ -254,9 +254,9 @@
 
     $("vKpis").innerHTML =
       '<div class="kpi"><span class="k-val">' + money(R.yourCost) + '</span><span class="k-lbl">Your cost, ' + nWeeks + ' weeks</span></div>' +
-      '<div class="kpi"><span class="k-val">' + bw(R.yourBullwhip) + '</span><span class="k-lbl">Bullwhip at your stage</span></div>' +
-      '<div class="kpi"><span class="k-val">' + bw(R.factoryBullwhip) + '</span><span class="k-lbl">Bullwhip at the factory</span></div>' +
-      '<div class="kpi"><span class="k-val">' + pct(R.fillRate) + '</span><span class="k-lbl">Orders filled</span></div>';
+      '<div class="kpi"><span class="k-val">' + bw(R.yourBullwhip) + '</span><span class="k-lbl">Bullwhip at your stage <button type="button" data-tip="bullwhip"></button></span></div>' +
+      '<div class="kpi"><span class="k-val">' + bw(R.factoryBullwhip) + '</span><span class="k-lbl">Bullwhip at the factory <button type="button" data-tip="bullwhip"></button></span></div>' +
+      '<div class="kpi"><span class="k-val">' + pct(R.fillRate) + '</span><span class="k-lbl">Orders filled <button type="button" data-tip="fill"></button></span></div>';
 
     /* ---- built-in checks ---- */
     var checks = [];
@@ -606,8 +606,8 @@
       " Your bullwhip ratio was " + bw(yourBw) + "; the best rule's was " + bw(best.bw) + ". You filled " + pct(fill) + " of the orders that reached you, and the whole chain spent " + money(st.cost[0] + st.cost[1] + st.cost[2] + st.cost[3]) + ".</p>" +
       '<div class="kpis"><div class="kpi"><span class="k-val">' + money(yourCost) + '</span><span class="k-lbl">Your cost</span></div>' +
       '<div class="kpi"><span class="k-val">' + money(best.cost) + '</span><span class="k-lbl">Best rule</span></div>' +
-      '<div class="kpi"><span class="k-val">' + bw(yourBw) + '</span><span class="k-lbl">Your bullwhip</span></div>' +
-      '<div class="kpi"><span class="k-val">' + pct(fill) + '</span><span class="k-lbl">Orders filled</span></div></div></div>';
+      '<div class="kpi"><span class="k-val">' + bw(yourBw) + '</span><span class="k-lbl">Your bullwhip <button type="button" data-tip="bullwhip"></button></span></div>' +
+      '<div class="kpi"><span class="k-val">' + pct(fill) + '</span><span class="k-lbl">Orders filled <button type="button" data-tip="fill"></button></span></div></div></div>';
     $("playStatus").textContent = "Game over. Start a new game to try another role, other teammates, or another demand pattern.";
     play.preview = null;
   }
@@ -706,6 +706,16 @@
     if (window.KitTheme && KitTheme.onChange) KitTheme.onChange(redrawAll);
     var rz = null;
     window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(redrawAll, 150); });
+
+    Tool.explain({
+      lost: { t: "Backlog or lost sale", d: "With backlogs, unfilled orders wait and are shipped later, so you pay a shortage cost each week they wait. With lost sales, the sale is gone. The best rule can change between the two, so the tool asks." },
+      demand: { t: "Customer demand", d: "What end customers buy from the retailer each week. Only the retailer sees it; every other stage sees only the orders placed by the stage below, unless demand is shared." },
+      bullwhip: { t: "Bullwhip effect", d: "Orders swing more than the demand behind them, and the swings grow at every stage upstream. Measured as the variance of a stage's orders ÷ the variance of customer demand: ×1 means no amplification, ×4 means orders swing four times as much. Long delays, short forecast windows and reacting to every change make it worse." },
+      service: { t: "Service level target", d: "The order-up-to rule keeps stock plus goods on the way up to a target: forecast demand over the lead time plus a safety margin. The service level sets the margin: 95% means stock covers demand in 95% of weeks. 'Balanced to my costs' picks the level where one more unit of stock saves as much shortage cost as it adds in holding cost." },
+      window: { t: "Forecast window", d: "Each stage forecasts with the average of its last few weeks of incoming orders. A short window reacts fast but chases noise, which feeds the bullwhip; for an order-up-to stage the amplification is roughly 1 + 2L/p + 2L²/p² (L = lead time, p = window)." },
+      stage: { t: "Your stage", d: "The four links of the classic Beer Game: retailer, wholesaler, distributor, factory. Goods flow down to customers; orders flow up. The further upstream, the more distorted the orders you receive." },
+      fill: { t: "Orders filled", d: "The share of orders shipped on time from stock (the fill rate). Pass-through can look cheap but fills less after demand jumps." }
+    });
 
     recompute();
   }

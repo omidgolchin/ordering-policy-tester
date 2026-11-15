@@ -48,13 +48,21 @@
     <p class="kit-tagline">Which reorder rule to use at your stage of a supply chain, scored on your cost and on the bullwhip it sends upstream. Or play the ordering game and feel it happen.</p>
   </header>
 
-  <div class="tool-modes" role="tablist" aria-label="Mode">
+  <div class="tool-modes" role="tablist" aria-label="What do you want to do?">
     <button type="button" role="tab" id="modeCompare" class="active" aria-selected="true">Compare rules</button>
     <button type="button" role="tab" id="modePlay" aria-selected="false">Play the game</button>
   </div>
 
   <!-- ================= Compare mode ================= -->
-  <section id="compareMode">
+  <section id="compareMode" role="tabpanel" aria-labelledby="modeCompare">
+    <div class="guide" aria-label="How to use this mode">
+      <ol class="steps">
+        <li><b>Describe your place in the chain</b>: your stage, the delays, and what holding stock and running short cost you.</li>
+        <li><b>Pick the demand you face</b>: a classic step, a seasonal swing, random weeks, or your own sales history.</li>
+        <li><b>Read which reorder rule wins</b> on your cost, and how much it amplifies swings for the stages upstream (the bullwhip).</li>
+      </ol>
+      <p class="also"><b>Also here:</b> <i>Play the game</i> lets you run a stage yourself against computer teammates · <i>Fill from my description</i> reads a pasted note · <i>The smoothing trade-off</i> shows calmer orders against cost.</p>
+    </div>
     <div class="work">
       <form class="panel" id="inputs" novalidate onsubmit="return false">
         <div class="panel-head">
@@ -63,7 +71,7 @@
         </div>
         <p class="small muted" id="exampleNote" style="margin-top:0"></p>
         <div class="fields">
-          <div class="field full"><label for="stage">Your stage in the chain</label>
+          <div class="field full"><label for="stage">Your stage in the chain <button type="button" data-tip="stage"></button></label>
             <select id="stage">
               <option value="0">Retailer (you face the customer)</option>
               <option value="1">Wholesaler</option>
@@ -79,12 +87,12 @@
             <p class="err" id="holdingCostErr" hidden></p><div class="hint">Per unit in stock, per week.</div></div>
           <div class="field"><label for="backlogCost">Shortage cost</label><div class="input-wrap"><input type="number" id="backlogCost" min="0" max="100" step="0.05" value="1"><span class="unit">$</span></div>
             <p class="err" id="backlogCostErr" hidden></p><div class="hint">Per unit owed, per week (or per lost sale).</div></div>
-          <div class="field"><label for="costModel">An order you cannot fill</label>
+          <div class="field"><label for="costModel">An order you cannot fill <button type="button" data-tip="lost"></button></label>
             <select id="costModel">
               <option value="backlog">Waits as a backlog</option>
               <option value="lost">Is a lost sale</option>
-            </select></div>
-          <div class="field"><label for="serviceLevel">Order-up-to target aims for</label>
+            </select><div class="hint">Backlog: the customer waits and you fill it later. Lost sale: the customer goes elsewhere.</div></div>
+          <div class="field"><label for="serviceLevel">Order-up-to target aims for <button type="button" data-tip="service"></button></label>
             <select id="serviceLevel">
               <option value="auto">Balanced to my costs</option>
               <option value="0.9">90% service level</option>
@@ -92,15 +100,15 @@
               <option value="0.99">99% service level</option>
             </select>
             <div class="hint">The chance of filling an order from stock. Balanced uses shortage ÷ (shortage + holding).</div></div>
-          <div class="field"><label for="demandPattern">Customer demand</label>
+          <div class="field"><label for="demandPattern">Customer demand <button type="button" data-tip="demand"></button></label>
             <select id="demandPattern">
               <option value="step">Steps up (classic)</option>
               <option value="constant">Steady</option>
               <option value="seasonal">Seasonal swing</option>
               <option value="random">Random, steady mean</option>
               <option value="custom">Paste your own</option>
-            </select></div>
-          <div class="field"><label for="forecastWeeks">Forecast window</label><div class="input-wrap"><input type="number" id="forecastWeeks" min="1" max="26" step="1" value="8"><span class="unit">wk</span></div>
+            </select><div class="hint">The classic game: 4 a week, then 8 from week 5. Paste your own to test your real sales.</div></div>
+          <div class="field"><label for="forecastWeeks">Forecast window <button type="button" data-tip="window"></button></label><div class="input-wrap"><input type="number" id="forecastWeeks" min="1" max="26" step="1" value="8"><span class="unit">wk</span></div>
             <p class="err" id="forecastWeeksErr" hidden></p><div class="hint">Each stage forecasts demand as the average of this many recent weeks.</div></div>
           <div class="field full" id="demandCustomWrap" hidden><label for="demandCustom">Weekly demand, one number per week</label>
             <textarea class="paste" id="demandCustom" rows="3">6, 7, 5, 8, 6, 9, 7, 6, 8, 10, 7, 6, 5, 7, 9, 8, 6, 7, 10, 9, 7, 6, 8, 7, 9, 11, 8, 7, 6, 8, 9, 7, 8, 10, 7, 9</textarea>
@@ -140,7 +148,7 @@
     </div>
 
     <section class="panel" style="margin-top:16px">
-      <h2>Orders week by week</h2>
+      <h2>Orders week by week <button type="button" data-tip="bullwhip"></button></h2>
       <p class="small muted" style="margin-top:0">What your stage and the factory order under the recommended rule, against pass-through, with customer demand dashed underneath. The growth from your line to the factory's is the bullwhip effect.</p>
       <div class="svgchart" id="orderChart"></div>
       <p class="chart-caption" id="chartNote"></p>
@@ -176,7 +184,15 @@
   </section>
 
   <!-- ================= Play mode ================= -->
-  <section id="playMode" hidden>
+  <section id="playMode" role="tabpanel" aria-labelledby="modePlay" hidden>
+    <div class="guide" aria-label="How to use this mode">
+      <ol class="steps">
+        <li><b>Pick your stage</b> and how your three computer teammates order.</li>
+        <li><b>Each week, place one order</b> after you see what arrived and what was ordered from you.</li>
+        <li><b>After 36 weeks, compare</b> your cost and your bullwhip with the best rule on the same demand.</li>
+      </ol>
+      <p class="also"><b>Also here:</b> Costs and delays come from <i>Compare rules</i>.</p>
+    </div>
     <div class="work">
       <form class="panel" id="playInputs" novalidate onsubmit="return false">
         <div class="panel-head"><h2>Your team</h2></div>
@@ -189,19 +205,19 @@
             <option value="2">Distributor</option>
             <option value="3">Factory</option>
           </select>
-        </div>
+        <div class="hint">The stage you order for. The factory is hardest: it sees swings that have grown at every stage below.</div></div>
         <div class="field">
           <label for="botA" id="botALabel">Teammate</label>
           <select id="botA"></select>
-        </div>
+        <div class="hint">How this computer teammate orders. The anchoring bot copies how real players behaved in Sterman's 1989 experiments.</div></div>
         <div class="field">
           <label for="botB" id="botBLabel">Teammate</label>
           <select id="botB"></select>
-        </div>
+        <div class="hint">How this computer teammate orders. The anchoring bot copies how real players behaved in Sterman's 1989 experiments.</div></div>
         <div class="field">
           <label for="botC" id="botCLabel">Teammate</label>
           <select id="botC"></select>
-        </div>
+        <div class="hint">How this computer teammate orders. The anchoring bot copies how real players behaved in Sterman's 1989 experiments.</div></div>
         <div class="field full">
           <label for="playDemand">Customer demand</label>
           <select id="playDemand">
@@ -209,7 +225,7 @@
             <option value="seasonal">Seasonal swing</option>
             <option value="random">Random week to week</option>
           </select>
-        </div>
+        <div class="hint">Customers buy from the retailer only. Everyone else sees only the orders placed with them.</div></div>
         </div>
         <div class="actions" style="margin-top:12px"><button type="button" class="primary" id="playStart">Start a new game</button></div>
         <p class="footnote">Costs, delays and the cost model come from Compare rules. A game lasts 36 weeks: each week you see what arrived and what was ordered from you, then place your order.</p>
@@ -243,10 +259,7 @@
   </section>
 
   <footer class="kit-footer">
-    <p class="kit-siblings"><span class="kit-siblings-label">More tools:</span>
-      <a href="https://omidgolchin.github.io/bayesian-ab-lab/">A/B Test Decision Tool</a> ·
-      <a href="https://omidgolchin.github.io/queue-simulator/">Call Center Staffing Planner</a> ·
-      <a href="https://omidgolchin.github.io/experiment-hazard-simulator/">Agent Eval Planner</a></p>
+    <p class="kit-siblings"></p>
     <p>Built by Omid Golchin · <a href="https://github.com/omidgolchin/ordering-policy-tester">Code, tests and design decisions</a> · Everything runs in your browser; nothing you type is sent anywhere unless you use the AI fill with your own key.</p>
   </footer>
 </main>
