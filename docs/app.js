@@ -268,7 +268,7 @@
       var cr = criticalRatio(inp.config.holdingCost, inp.config.backlogCost);
       var crSl = Math.min(0.995, Math.max(0.5, cr));
       if ($("serviceLevel").value === "auto") {
-        checks.push(["ok", "COST-BALANCED", "Service level from your costs",
+        checks.push(["ok", "FROM YOUR COSTS", "Service level from your costs",
           "The target aims for " + pct(crSl) + ": shortage cost ÷ (shortage + holding) = " + fmtN(inp.config.backlogCost, 2) + " ÷ " + fmtN(inp.config.backlogCost + inp.config.holdingCost, 2) + ", the critical ratio (Silver, Pyke and Thomas, 2016)." +
           (cr < 0.5 ? " Your ratio is below 50%; the tool keeps at least 50% so the target never drops under expected lead-time demand." : "")]);
       } else if (Math.abs(inp.config.serviceLevel - crSl) >= 0.05) {
@@ -302,7 +302,7 @@
       var bwHi = altFactoryBullwhip(Object.assign({}, inp.config, { forecastWeeks: fwHi }), inp.seriesList, inp.stage, pol);
       if (bwLo !== null && bwHi !== null) {
         var spread = Math.max(bwLo, bwHi, R.factoryBullwhip) / Math.max(0.01, Math.min(bwLo, bwHi, R.factoryBullwhip));
-        checks.push([spread > 1.5 ? "warn" : "info", "FORECAST", "Forecast window",
+        checks.push([spread > 1.5 ? "warn" : "info", "FORECAST WINDOW", "Forecast window",
           "Every stage forecasts demand from the last " + fwNow + " weeks of " + (inp.config.infoSharing ? "customer demand" : "the orders it receives") + "; the factory's bullwhip is " + bw(R.factoryBullwhip) +
           ". With " + fwLo + " weeks it would be " + bw(bwLo) + ", with " + fwHi + " weeks " + bw(bwHi) + ". Short windows chase noise and each stage adds its own (Chen, Drezner, Ryan and Simchi-Levi, 2000)" +
           (spread > 1.5 ? "; the window matters as much as the rule here." : ".")]);
@@ -479,7 +479,7 @@
   function startGame() {
     var inp = readInputs();
     if (inp.problems.length) {
-      $("playStatus").textContent = "The Compare settings need fixing first (" + inp.problems[0] + "). Switch to Compare policies, fix the highlighted settings, then start again.";
+      $("playStatus").textContent = "The Compare settings need fixing first (" + inp.problems[0] + "). Switch to Compare rules, fix the highlighted settings, then start again.";
       return;
     }
     var bp = playBotPolicies();
@@ -495,6 +495,9 @@
       snapshot: null, preview: null, suggestion: 0, log: []
     };
     $("playEnd").innerHTML = "";
+    var c = inp.config;
+    $("playRules").textContent = "Using the settings from Compare rules: order delay " + c.orderDelay + " wk, shipping delay " + c.shipDelay + " wk, holding $" + Number(c.holdingCost).toFixed(2) + " and shortage $" + Number(c.backlogCost).toFixed(2) + " per unit-week, " + (c.costModel === "lost" ? "unfilled orders lost" : "unfilled orders wait as a backlog") + ". Change them there and start a new game.";
+    $("playRules").hidden = false;
     $("playTitle").textContent = "You are the " + STAGE_TITLES[play.role].toLowerCase();
     renderPlayTiles();
     drawPlayChart();

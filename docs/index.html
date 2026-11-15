@@ -45,7 +45,7 @@
       <button type="button" class="kit-theme-toggle" aria-pressed="false">◐ Theme</button>
     </div>
     <h1>Ordering Policy Tester</h1>
-    <p class="kit-tagline">Which reorder rule to use at your stage of a supply chain, scored on your cost and on the bullwhip it sends upstream. Or play the ordering game and feel it happen.</p>
+    <p class="kit-tagline">Which reorder rule to use at your stage of a supply chain, scored on your cost and on the bullwhip it sends upstream: how much the swings in your orders grow as they pass up the chain. Or play the ordering game and feel it happen.</p>
   </header>
 
   <div class="tool-modes" role="tablist" aria-label="What do you want to do?">
@@ -59,7 +59,7 @@
       <ol class="steps">
         <li><b>Describe your place in the chain</b>: your stage, the delays, and what holding stock and running short cost you.</li>
         <li><b>Pick the demand you face</b>: a classic step, a seasonal swing, random weeks, or your own sales history.</li>
-        <li><b>Read which reorder rule wins</b> on your cost, and how much it amplifies swings for the stages upstream (the bullwhip).</li>
+        <li><b>Read which reorder rule wins</b> on your cost, and how much it amplifies swings for the stages upstream (the bullwhip effect: orders swing more than the demand behind them, more at every stage).</li>
       </ol>
       <p class="also"><b>Also here:</b> <i>Play the game</i> lets you run a stage yourself against computer teammates · <i>Fill from my description</i> reads a pasted note · <i>The smoothing trade-off</i> shows calmer orders against cost.</p>
     </div>
@@ -94,12 +94,12 @@
             </select><div class="hint">Backlog: the customer waits and you fill it later. Lost sale: the customer goes elsewhere.</div></div>
           <div class="field"><label for="serviceLevel">Order-up-to target aims for <button type="button" data-tip="service"></button></label>
             <select id="serviceLevel">
-              <option value="auto">Balanced to my costs</option>
+              <option value="auto">Balanced to my costs (recommended once the costs are yours)</option>
               <option value="0.9">90% service level</option>
-              <option value="0.95" selected>95% service level</option>
+              <option value="0.95" selected>95% service level (classic-game default)</option>
               <option value="0.99">99% service level</option>
             </select>
-            <div class="hint">The chance of filling an order from stock. Balanced uses shortage ÷ (shortage + holding).</div></div>
+            <div class="hint">The chance of filling an order from stock. It starts at 95%, the textbook setting for the classic game; switch to Balanced once the costs above are your real ones, and the tool sets it from shortage ÷ (shortage + holding).</div></div>
           <div class="field"><label for="demandPattern">Customer demand <button type="button" data-tip="demand"></button></label>
             <select id="demandPattern">
               <option value="step">Steps up (classic)</option>
@@ -233,6 +233,7 @@
 
       <section class="panel" id="playPanel" aria-live="polite">
         <h2 id="playTitle">The ordering game</h2>
+        <p class="small muted" id="playRules" hidden style="margin-top:0"></p>
         <p id="playStatus">Pick your role and teammates, then start. You will place one order a week for 36 weeks; at the end, your cost and bullwhip ratio are set next to the best rule's on the same demand.</p>
         <div class="stage-grid" id="playStages"></div>
         <div class="play-turn" id="playTurn" hidden>
