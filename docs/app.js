@@ -349,6 +349,21 @@
     drawCurves(ev);
   }
 
+  /* Sparkline: a tiny inline plot of one rule's weekly orders, drawn from
+   * the same simulated series the orders chart uses. Decorative only —
+   * the row's cost and bullwhip columns carry the same story in numbers,
+   * so the SVG is hidden from assistive technology. */
+  function sparkline(orders, color) {
+    if (!orders || orders.length < 2) return "";
+    var w = 96, h = 24, i;
+    var max = 1;
+    for (i = 0; i < orders.length; i++) if (orders[i] > max) max = orders[i];
+    var pts = orders.map(function (y, j) {
+      return (1 + j / (orders.length - 1) * (w - 2)).toFixed(1) + "," + (h - 2 - y / max * (h - 4)).toFixed(1);
+    }).join(" ");
+    return '<svg class="spark" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h + '" aria-hidden="true" focusable="false"><polyline points="' + pts + '" fill="none" style="stroke:' + color + '" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+  }
+
   function renderNumbers(inp, ev, rec) {
     var rows = ["out", "smooth", "pass"].map(function (key) {
       var r = ev.rules[key];
@@ -356,12 +371,14 @@
       var name = RULE_NAMES[key] + (key === "smooth" ? " (" + fmtN(r.alpha, 1) + (r.alpha === 1.0 ? ": no smoothing pays" : "") + ")" : "");
       return '<tr class="' + (key === rec.rule ? "rec" : "") + (compared ? "" : " dim") + '"><td>' + name +
         (key === rec.rule ? " (recommended)" : compared ? "" : " (not compared)") + "</td><td>" + money(r.yourCost) + "</td><td>" +
-        money(r.chainCost) + "</td><td>" + bw(r.yourBullwhip) + "</td><td>" + bw(r.factoryBullwhip) + "</td><td>" + pct(r.fillRate) + "</td></tr>";
+        money(r.chainCost) + "</td><td>" + bw(r.yourBullwhip) + "</td><td>" + bw(r.factoryBullwhip) + "</td><td>" + pct(r.fillRate) + "</td>" +
+        '<td class="sparkcell">' + sparkline(r.yourOrders, "var(--accent)") + "</td>" +
+        '<td class="sparkcell">' + sparkline(r.factoryOrders, "var(--series-2)") + "</td></tr>";
     }).join("");
     $("numbersBody").innerHTML =
-      '<table class="numbers"><thead><tr><th>Rule</th><th>Your cost</th><th>Whole-chain cost</th><th>Your bullwhip</th><th>Factory bullwhip</th><th>Filled</th></tr></thead><tbody>' +
+      '<table class="numbers"><thead><tr><th>Rule</th><th>Your cost</th><th>Whole-chain cost</th><th>Your bullwhip</th><th>Factory bullwhip</th><th>Filled</th><th>Your orders, week by week</th><th>Factory orders, week by week</th></tr></thead><tbody>' +
       rows + "</tbody></table>" +
-      '<p class="small muted">Costs are holding plus shortage costs over ' + inp.seriesList[0].length + ' weeks' + (inp.seriesList.length > 1 ? '; each figure is the median over ' + inp.seriesList.length + ' demand paths' : '') + '. The other stages always use plain order-up-to; only your stage\'s rule changes.</p>';
+      '<p class="small muted">Costs are holding plus shortage costs over ' + inp.seriesList[0].length + ' weeks' + (inp.seriesList.length > 1 ? '; each figure is the median over ' + inp.seriesList.length + ' demand paths' : '') + '. The other stages always use plain order-up-to; only your stage\'s rule changes. The sparklines plot the same simulated path as the orders chart below.</p>';
   }
 
   function seriesFrom(orders, name, color, dash) {
@@ -680,7 +697,9 @@
     if (params.ba) $("botA").value = params.ba;
     if (params.bb) $("botB").value = params.bb;
     if (params.bc2) $("botC").value = params.bc2;
-    if (params.m === "play") setMode("play");
+    /* The game is the landing view; Compare rules is the second view.
+     * Only an explicit ?m=compare (a shared link) opens on Compare. */
+    setMode(params.m === "compare" ? "compare" : "play");
 
     sel.addEventListener("change", function () { applyExample(parseInt(sel.value, 10) || 0); recompute(); });
     ["stage", "orderDelay", "shipDelay", "holdingCost", "backlogCost", "costModel", "serviceLevel", "demandPattern", "forecastWeeks", "demandCustom", "infoSharing", "ruleOut", "ruleSmooth", "rulePass"].forEach(function (id) {

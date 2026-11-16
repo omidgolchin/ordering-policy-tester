@@ -143,3 +143,9 @@ select.example { font-size: var(--fs-small); }
 .jump { display: none; }
 @media (max-width: 820px) { .jump { display: inline-flex; align-items: center; min-height: 44px; margin: 0 0 var(--sp-2); font-size: var(--fs-small); font-weight: 600; } }
 .ctl-grid .ctl-hint { display: block; margin-top: 4px; font-weight: 400; }
+
+/* ---- game-first restructure: ranking-table sparklines, bullwhip box ---- */
+.bullwhip-box { margin-top: 16px; }
+.bullwhip-box h2 { margin-top: 0; }
+table.numbers td.sparkcell { text-align: left; }
+table.numbers .spark { display: block; }

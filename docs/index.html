@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ordering Policy Tester: which reorder rule, and how much bullwhip</title>
-<meta name="description" content="Compare ordering rules for one stage of a four-stage supply chain: order-up-to, smoothed order-up-to, and pass-through, scored on cost and the bullwhip effect. Or play the ordering game yourself.">
+<meta name="description" content="Play the ordering game yourself for one stage of a four-stage supply chain, or compare ordering rules — order-up-to, smoothed order-up-to, and pass-through — scored on cost and the bullwhip effect.">
 <script src="kit-theme.js"></script>
 <link rel="stylesheet" href="kit.css">
 <link rel="stylesheet" href="tool.css">
@@ -24,7 +24,7 @@
   .play-order-row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-top: 8px; }
   .play-order-row .field { min-width: 160px; }
   table.numbers { border-collapse: collapse; width: 100%; font-size: 14px; }
-  table.numbers th, table.numbers td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.numbers th, table.numbers td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--border); }
   table.numbers th:first-child, table.numbers td:first-child { text-align: left; }
   table.numbers tr.rec td { font-weight: 700; }
   .dim { color: var(--muted); }
@@ -49,20 +49,12 @@
   </header>
 
   <div class="tool-modes" role="tablist" aria-label="What do you want to do?">
-    <button type="button" role="tab" id="modeCompare" class="active" aria-selected="true">Compare rules</button>
-    <button type="button" role="tab" id="modePlay" aria-selected="false">Play the game</button>
+    <button type="button" role="tab" id="modePlay" class="active" aria-selected="true">Play the ordering game</button>
+    <button type="button" role="tab" id="modeCompare" aria-selected="false">Compare rules</button>
   </div>
 
   <!-- ================= Compare mode ================= -->
-  <section id="compareMode" role="tabpanel" aria-labelledby="modeCompare">
-    <div class="guide" aria-label="How to use this mode">
-      <ol class="steps">
-        <li><b>Describe your place in the chain</b>: your stage, the delays, and what holding stock and running short cost you.</li>
-        <li><b>Pick the demand you face</b>: a classic step, a seasonal swing, random weeks, or your own sales history.</li>
-        <li><b>Read which reorder rule wins</b> on your cost, and how much it amplifies swings for the stages upstream (the bullwhip effect: orders swing more than the demand behind them, more at every stage).</li>
-      </ol>
-      <p class="also"><b>Also here:</b> <i>Play the game</i> lets you run a stage yourself against computer teammates · <i>Fill from my description</i> reads a pasted note · <i>The smoothing trade-off</i> shows calmer orders against cost.</p>
-    </div>
+  <section id="compareMode" role="tabpanel" aria-labelledby="modeCompare" hidden>
     <div class="work">
       <form class="panel" id="inputs" novalidate onsubmit="return false">
         <div class="panel-head">
@@ -146,17 +138,18 @@
       </div>
     </div>
 
+    <section class="panel" style="margin-top:16px" aria-labelledby="rankTitle">
+      <h2 id="rankTitle">The three rules, ranked</h2>
+      <p class="small muted" style="margin-top:0">The verdict as a table: every rule at your stage, with its cost, its bullwhip, and a sparkline of the orders it places week by week. The recommended rule's row is marked.</p>
+      <div class="table-scroll" id="numbersBody"></div>
+    </section>
+
     <section class="panel" style="margin-top:16px">
       <h2>Orders week by week <button type="button" data-tip="bullwhip"></button></h2>
       <p class="small muted" style="margin-top:0">What your stage and the factory order under the recommended rule, against pass-through, with customer demand dashed underneath. The growth from your line to the factory's is the bullwhip effect.</p>
       <div class="svgchart" id="orderChart"></div>
       <p class="chart-caption" id="chartNote"></p>
     </section>
-
-    <details class="more">
-      <summary>The numbers behind the verdict <span class="sub">every rule, side by side</span></summary>
-      <div class="more-body"><div class="table-scroll" id="numbersBody"></div></div>
-    </details>
 
     <details class="more">
       <summary>The smoothing trade-off <span class="sub">calmer orders or lower cost</span></summary>
@@ -183,15 +176,7 @@
   </section>
 
   <!-- ================= Play mode ================= -->
-  <section id="playMode" role="tabpanel" aria-labelledby="modePlay" hidden>
-    <div class="guide" aria-label="How to use this mode">
-      <ol class="steps">
-        <li><b>Pick your stage</b> and how your three computer teammates order.</li>
-        <li><b>Each week, place one order</b> after you see what arrived and what was ordered from you.</li>
-        <li><b>After 36 weeks, compare</b> your cost and your bullwhip with the best rule on the same demand.</li>
-      </ol>
-      <p class="also"><b>Also here:</b> Costs and delays come from <i>Compare rules</i>.</p>
-    </div>
+  <section id="playMode" role="tabpanel" aria-labelledby="modePlay">
     <div class="work">
       <form class="panel" id="playInputs" novalidate onsubmit="return false">
         <div class="panel-head"><h2>Your team</h2></div>
@@ -230,6 +215,7 @@
         <p class="footnote">Costs, delays and the cost model come from Compare rules. A game lasts 36 weeks: each week you see what arrived and what was ordered from you, then place your order.</p>
       </form>
 
+      <div>
       <section class="panel" id="playPanel" aria-live="polite">
         <h2 id="playTitle">The ordering game</h2>
         <p class="small muted" id="playRules" hidden style="margin-top:0"></p>
@@ -249,6 +235,12 @@
         <div id="playEnd"></div>
         <p class="hint" id="playLog"></p>
       </section>
+
+      <aside class="panel bullwhip-box" aria-labelledby="bwBoxTitle">
+        <h2 id="bwBoxTitle">What is the bullwhip effect?</h2>
+        <p class="small" style="margin:0">Orders swing more than the demand behind them, and the swings grow at every stage upstream. It is measured as the variance of a stage's orders ÷ the variance of customer demand: ×1 means no amplification, ×4 means orders swing four times as much. Long delays, short forecast windows and reacting to every change make it worse. Play a game and watch the chart below fan out: steady demand, wild factory orders.</p>
+      </aside>
+      </div>
     </div>
 
     <section class="panel" style="margin-top:16px">

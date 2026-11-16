@@ -1,19 +1,19 @@
 # Ordering Policy Tester
 
-For anyone who orders stock for one stage of a supply chain: which reorder rule to use (order-up-to, order-up-to with smoothing, or passing orders straight on), scored on what it costs your stage and how hard it whips the chain upstream. Then play the ordering game yourself and feel why the bullwhip effect happens.
+For anyone who orders stock for one stage of a supply chain: play the ordering game yourself and feel why the bullwhip effect happens. Then find which reorder rule to use for your stage (order-up-to, order-up-to with smoothing, or passing orders straight on), scored on what it costs your stage and how hard it whips the chain upstream.
 
-![The tester on three settings (the classic game, noisy demand with pricey stock-outs, lost sales), the explanation of the bullwhip effect, and the playable game](docs/hero.gif)
+![The tester in three frames: the ordering game in play, the game's end screen, and the three rules ranked in Compare](docs/hero.gif)
 
-![The tester on a desktop: the three-step guide, the inputs with a hint under each, and the recommended rule](docs/screenshots/desktop.png)
+![The tester on a desktop: the ordering game, the landing view, with the bullwhip effect explained beside it](docs/screenshots/desktop.png)
 
 **Use it:** https://omidgolchin.github.io/ordering-policy-tester/ (runs in your browser; nothing you type leaves it)
 
 ## What it does
 
-- **Compare rules.** Set your stage (retailer, wholesaler, distributor or factory), order and shipping delays, holding and shortage costs, what an unfilled order becomes (a backlog or a lost sale), the service level or "balanced to my costs", the forecast window, and a demand pattern: a step, steady, seasonal, random around a steady mean, or your own pasted series. The tool simulates a four-stage chain for 36 weeks and recommends a rule with its parameters: "Use order-up-to with smoothing 0.6 and a target of 32 units." You get your cost (with its range over 20 demand paths when demand is random), your bullwhip ratio (variance of your orders over variance of demand), the factory's, your fill rate, and the trade-off against the other rules.
 - **Play the game.** Take one role for 36 weeks against bot teammates you choose: order-up-to bots, a pass-through bot, or the anchoring bot that orders the way Sterman's real players did. Each week you see what arrived and what was ordered from you, then place your order. The end screen sets your cost and bullwhip ratio next to the best rule's on the same demand.
+- **Compare rules.** Set your stage (retailer, wholesaler, distributor or factory), order and shipping delays, holding and shortage costs, what an unfilled order becomes (a backlog or a lost sale), the service level or "balanced to my costs", the forecast window, and a demand pattern: a step, steady, seasonal, random around a steady mean, or your own pasted series. The tool simulates a four-stage chain for 36 weeks and recommends a rule with its parameters: "Use order-up-to with smoothing 0.6 and a target of 32 units." You get your cost (with its range over 20 demand paths when demand is random), your bullwhip ratio (variance of your orders over variance of demand), the factory's, your fill rate, and the three rules ranked in a table with cost and bullwhip columns.
 - **Fill from my description (AI).** Describe your setup in your own words; a model (your key, or copy the prompt into any assistant) fills in the settings it can find, quotes your words for each one, and lists what you did not state. You confirm before anything is applied.
-- **Help where you need it.** Each mode opens with three steps saying what to enter and what you get; every input has a line under it saying what the number is, why it matters and where to find it; and every technical term in the inputs and results has a **?** that opens a plain-language explanation.
+- **Help where you need it.** Every input has a line under it saying what the number is, why it matters and where to find it; every technical term in the inputs and results has a **?** that opens a plain-language explanation; and a short box beside the game explains the bullwhip effect in plain words.
 
 ## Built-in checks
 
