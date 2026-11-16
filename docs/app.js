@@ -62,7 +62,7 @@
     $("ruleOut").checked = s.rules.indexOf("out") >= 0;
     $("ruleSmooth").checked = s.rules.indexOf("smooth") >= 0;
     $("rulePass").checked = s.rules.indexOf("pass") >= 0;
-    $("exampleNote").textContent = EXAMPLES[i].note || "";
+    Tool.exampleWatch($("inputs"), "<b>" + EXAMPLES[i].name + ".</b> " + (EXAMPLES[i].note || "") + " Change any setting to test your own chain.");
     syncCustomVisibility();
   }
   function syncCustomVisibility() { $("demandCustomWrap").hidden = $("demandPattern").value !== "custom"; }
@@ -286,13 +286,13 @@
     var altBw = altFactoryBullwhip(flippedCfg, inp.seriesList, inp.stage, pol);
     if (altBw !== null && R.factoryBullwhip !== null) {
       if (!inp.config.infoSharing && altBw < R.factoryBullwhip * 0.8) {
-        checks.push(["warn", "SHARING OFF", "Information sharing",
+        checks.push(["warn", "DEMAND NOT SHARED", "Information sharing",
           "Sharing customer demand with every stage would cut the factory's bullwhip from " + bw(R.factoryBullwhip) + " to " + bw(altBw) + ". Each stage is currently guessing demand from the orders it receives (Lee, Padmanabhan and Whang, 1997)."]);
       } else if (inp.config.infoSharing && altBw > R.factoryBullwhip * 1.25) {
-        checks.push(["ok", "SHARING ON", "Information sharing",
+        checks.push(["ok", "DEMAND SHARED", "Information sharing",
           "Sharing is doing its work: without it the factory's bullwhip would be " + bw(altBw) + " instead of " + bw(R.factoryBullwhip) + "."]);
       } else {
-        checks.push(["info", "SHARING", "Information sharing",
+        checks.push(["info", "DEMAND SHARING", "Information sharing",
           "Sharing demand barely moves the factory's bullwhip here: " + bw(R.factoryBullwhip) + " with the current setting, " + bw(altBw) + " without. Amplification is not always about missing information."]);
       }
     }
@@ -316,10 +316,10 @@
     var altCfg = Object.assign({}, inp.config, { costModel: otherModel });
     var alt = altBestRule(altCfg, inp.seriesList, inp.stage, ev, inp.rules);
     if (alt.best && alt.best !== rec.rule) {
-      checks.push(["warn", "COST MODEL", "Backlog or lost sales?",
+      checks.push(["warn", "SHORTAGES", "Backlog or lost sales?",
         "If unfilled orders were " + (otherModel === "lost" ? "lost sales" : "backlogs") + " instead, " + RULE_NAMES[alt.best] + " would be the cheapest rule at your stage (" + money(alt.costs[alt.best]) + "). The best rule depends on what a stock-out really is in your business."]);
     } else if (alt.best) {
-      checks.push(["info", "COST MODEL", "Backlog or lost sales?",
+      checks.push(["info", "SHORTAGES", "Backlog or lost sales?",
         RULE_NAMES[rec.rule] + " stays cheapest if unfilled orders are treated as " + (otherModel === "lost" ? "lost sales" : "backlogs") + " too."]);
     }
     if (inp.rules.indexOf("smooth") >= 0 && !steady) {
@@ -673,6 +673,7 @@
       $("rulePass").checked = rk.indexOf("pass") >= 0;
     }
     syncCustomVisibility();
+    if (["stage", "od", "sd", "hc", "bc", "cm", "svc", "dp", "dc", "fw", "sh", "rules"].some(function (k) { return params[k] != null; })) Tool.exampleBanner($("inputs"), null);
     if (params.pr != null) setVal("playRole", params.pr);
     if (params.pd != null) setVal("playDemand", params.pd);
     syncBotLabels();

@@ -23,9 +23,9 @@ For anyone who orders stock for one stage of a supply chain: which reorder rule 
 | Service level from your costs | Your costs' critical ratio, shortage ÷ (shortage + holding), and what the recommended rule would cost aimed at it instead of the level you picked. When the forecast lags demand, the higher level can win; the check prices it rather than assuming. |
 | Information sharing | What happens to the factory's bullwhip if every stage plans against customer demand instead of the orders it receives (Lee, Padmanabhan and Whang, 1997), and when it barely helps. |
 | Forecast window | The factory's bullwhip at half and twice your forecast window. Short windows chase noise and every stage multiplies it (Chen, Drezner, Ryan and Simchi-Levi, 2000); on most settings the window moves the factory as much as the rule does. |
-| Why pass-through can win | When passing orders on is cheapest: it is order-up-to with the target frozen, right when the mean holds still and wrong after a lasting change. |
-| Backlog vs lost sales | Whether the best rule changes if unfilled orders are lost sales instead of backlogs. It does at half the stages on seasonal demand. |
-| Smoothing trade-off | Your cost and bullwhip across smoothing factors 0.2 to 1.0 (Disney and Towill, 2003), and a plain statement when no smoothing pays. |
+| Why passing orders on can win | When passing orders on is cheapest: it is order-up-to with the target frozen, right when the mean holds still and wrong after a lasting change. |
+| Backlog or lost sales? | Whether the best rule changes if unfilled orders are lost sales instead of backlogs. It does at half the stages on seasonal demand. |
+| The smoothing trade-off | Your cost and bullwhip across smoothing factors 0.2 to 1.0 (Disney and Towill, 2003), and a plain statement when no smoothing pays. |
 
 ## Design decisions
 
