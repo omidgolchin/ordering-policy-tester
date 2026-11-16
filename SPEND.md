@@ -12,3 +12,4 @@ Total model spend on this tool: **$0.00**.
 - LLM players are study S02 in the tools_v3 program, explicitly out of
   scope here.
 - 2026-11-16: Structural restructure (game-first layout, ranked comparison table with sparklines) — $0.00 API spend (local build and headless-browser checks only).
+- 2026-11-16: guide sections (start here, situations, when to use, where it comes from) — $0.00 API spend; all work local.

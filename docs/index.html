@@ -46,6 +46,14 @@
     </div>
     <h1>Ordering Policy Tester</h1>
     <p class="kit-tagline">Which reorder rule to use at your stage of a supply chain, scored on your cost and on the bullwhip it sends upstream: how much the swings in your orders grow as they pass up the chain. Or play the ordering game and feel it happen.</p>
+    <div class="start-here">
+      <p class="sh-q"><b>It answers:</b> which reorder rule to use at your stage of a supply chain (order-up-to, order-up-to with smoothing, or passing orders straight on), and what each costs you and does to the stages above you.</p>
+      <ol>
+        <li><b>To see the problem first</b>, play a few weeks of the ordering game below. This step is optional.</li>
+        <li><b>To choose a rule</b>, open <a href="#compareMode" onclick="document.getElementById('modeCompare').click(); return false;">Compare rules</a>, pick the situation closest to yours in the menu beside "Your stage", then set your stage, delays, costs and demand.</li>
+        <li><b>Read the recommended rule</b> and its target, then the table ranking the three rules. Before you rely on it, check <a href="#fit" class="open-details">when to use this tool, and when not</a>.</li>
+      </ol>
+    </div>
   </header>
 
   <div class="tool-modes" role="tablist" aria-label="What do you want to do?">
@@ -59,7 +67,7 @@
       <form class="panel" id="inputs" novalidate onsubmit="return false">
         <div class="panel-head">
           <h2>Your stage</h2>
-          <select class="example" id="exampleSelect" aria-label="Load an example"></select>
+          <select class="example" id="exampleSelect" aria-label="Start from a common situation"></select>
         </div>
         <div class="fields">
           <div class="field full"><label for="stage">Your stage in the chain <button type="button" data-tip="stage"></button></label>
@@ -249,6 +257,36 @@
       <div class="svgchart" id="playChart"></div>
     </section>
   </section>
+
+  <details class="more guide" id="fit">
+    <summary>When to use it, and when not <span class="sub">assumptions, limits, alternatives</span></summary>
+    <div class="more-body small">
+      <p><b>Use it</b> to choose and tune a periodic reorder rule for one stage of a chain that orders from the stage above it every week: a store ordering from a distributor, a distributor from a manufacturer, or to show a team why order swings grow up the chain.</p>
+      <p><b>It assumes</b> the following. Each line says what happens to the answer when your case breaks the assumption.</p>
+      <table class="fit-table">
+        <thead><tr><th>Assumption</th><th>If yours differs</th></tr></thead>
+        <tbody>
+          <tr><td>A serial chain of four stages and one product; each stage orders from the one above, and the factory produces.</td><td>With several suppliers or customers per stage, the bullwhip still builds but the numbers will differ. Use the tool for the main supply route only.</td></tr>
+          <tr><td>The other three stages follow plain order-up-to.</td><td>Real partners may anchor or panic like Sterman's players; the Play mode's anchoring bot shows how much worse that gets. The Compare costs are then optimistic.</td></tr>
+          <tr><td>Order and shipping delays are fixed and known.</td><td>Delays that vary need extra safety stock the formula does not add. Use your longer, typical delay as a first cut.</td></tr>
+          <tr><td>Costs are per unit per week (holding and shortage); no fixed cost per order.</td><td>With a large cost per order, you will want to order in batches: an (s, S) or economic-order-quantity rule fits better.</td></tr>
+          <tr><td>The factory has unlimited capacity, and stock does not spoil.</td><td>If the factory is capacity-bound, its queue adds delay the tool ignores; for perishable stock, see the Order Quantity Planner.</td></tr>
+          <tr><td>Each stage forecasts with a moving average of the orders it receives (or of customer demand when demand is shared).</td><td>Exponential smoothing or a planner's judgment changes the bullwhip; the forecast-window check shows how sensitive the answer is.</td></tr>
+          <tr><td>The comparison runs 36 weeks on one of five demand patterns or your pasted series.</td><td>Rare events longer than 36 weeks are not tested. Paste a longer series to test your own path.</td></tr>
+        </tbody>
+      </table>
+      <p><b>Do not use it</b> for one-off orders of seasonal or perishable goods (use the Order Quantity Planner), for multi-echelon networks with many locations (use a supply-chain planning system), or for production scheduling at a capacity-bound factory.</p>
+    </div>
+  </details>
+
+  <details class="more guide" id="origin">
+    <summary>Where this tool comes from <span class="sub">the problem and data it was built on, and how it was generalised</span></summary>
+    <div class="more-body small">
+      <p>The tool comes out of the Beer Game, the four-stage ordering game from MIT in which demand steps up once and orders swing wildly up the chain (Sterman, 1989), and the research that explained it: forecasting from received orders drives the bullwhip (Lee, Padmanabhan and Whang, 1997), and its size grows with lead time and shrinks with a longer forecast window (Chen, Drezner, Ryan and Simchi-Levi, 2000).</p>
+      <p>Experiments on this repository's Python engine (<a href="https://github.com/omidgolchin/ordering-policy-tester/blob/main/results/summary.md">results/summary.md</a>) shaped the tool. The classic game's opening stock, not the rules, caused most of the bullwhip first measured, so the chain now opens in steady state. Sharing customer demand cut the factory's bullwhip from ×15.4 to ×4.0. Four anchoring players ran up $1,766 of chain cost against $834 for four order-up-to stages. The forecast window moved the factory's bullwhip more than the choice of rule did (×65 with a 4-week window, ×15 with 8, ×8 with 16, against a factor of about two between rules).</p>
+      <p><b>How it was generalised.</b> The game fixes one demand step, one cost pair and four human players. The tool keeps the game as the Play mode, and in Compare turns the game's fixed settings into your inputs (stage, delays, costs, backlog or lost sales, service level, forecast window, demand pattern or your own series), with three textbook rules scored on the same demand.</p>
+    </div>
+  </details>
 
   <footer class="kit-footer">
     <p class="kit-siblings"></p>

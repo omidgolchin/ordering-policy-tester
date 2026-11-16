@@ -13,6 +13,7 @@ For anyone who orders stock for one stage of a supply chain: play the ordering g
 - **Play the game.** Take one role for 36 weeks against bot teammates you choose: order-up-to bots, a pass-through bot, or the anchoring bot that orders the way Sterman's real players did. Each week you see what arrived and what was ordered from you, then place your order. The end screen sets your cost and bullwhip ratio next to the best rule's on the same demand.
 - **Compare rules.** Set your stage (retailer, wholesaler, distributor or factory), order and shipping delays, holding and shortage costs, what an unfilled order becomes (a backlog or a lost sale), the service level or "balanced to my costs", the forecast window, and a demand pattern: a step, steady, seasonal, random around a steady mean, or your own pasted series. The tool simulates a four-stage chain for 36 weeks and recommends a rule with its parameters: "Use order-up-to with smoothing 0.6 and a target of 32 units." You get your cost (with its range over 20 demand paths when demand is random), your bullwhip ratio (variance of your orders over variance of demand), the factory's, your fill rate, and the three rules ranked in a table with cost and bullwhip columns.
 - **Fill from my description (AI).** Describe your setup in your own words; a model (your key, or copy the prompt into any assistant) fills in the settings it can find, quotes your words for each one, and lists what you did not state. You confirm before anything is applied.
+- **Start here.** The page opens with the question it answers and three steps; a menu of common situations fills Compare; and a section says when to use the tool and when not.
 - **Help where you need it.** Every input has a line under it saying what the number is, why it matters and where to find it; every technical term in the inputs and results has a **?** that opens a plain-language explanation; and a short box beside the game explains the bullwhip effect in plain words.
 
 ## Built-in checks
@@ -49,6 +50,46 @@ For anyone who orders stock for one stage of a supply chain: play the ordering g
 - The forecast window is as big a lever as the rule. On the classic game the factory's bullwhip is ×65 with a 4-week window, ×15 with 8 and ×8 with 16, while switching rules moves it by a factor of about two.
 - Pass-through is not naive; it is order-up-to with its target frozen. That makes it the cheapest rule on noisy demand around a steady mean and the most expensive after a lasting jump, where it never rebuilds the stock the transition took.
 - Fill rates are the honest shock. After demand doubles, even the best rule fills about six orders in ten over the game, because the forecast takes weeks to catch up and the whole chain catches up at once.
+
+## Common situations
+
+The form opens with "Start from a common situation". Each entry fills the form and says what it shows:
+
+| Situation | What it shows |
+|---|---|
+| The classic: demand steps up | The Beer Game's demand doubles in week 5. Watch the factory, and what sharing demand does to it. |
+| Steady demand, same every week | The baseline: nothing changes, so nothing goes wrong. |
+| Noisy demand, pricey stock-outs | The rules land close; the forecast window moves the factory more than the rule does. |
+| Long lead time, pricey stock-outs | The step hurts for longer, and sharing demand calms the factory about tenfold. |
+| Unfilled orders are lost sales | Seasonal demand; smoothing edges out pass-through, which would win under backlogs. |
+| Cheap storage, costly shortages | Aim high and smooth lightly. |
+| Your own demand, pasted in | The rules are scored on exactly your path. |
+
+To add a situation, append an entry `{name, note, set}` to `EXAMPLES` in `docs/app.js`.
+
+## When to use it, and when not
+
+Use it to choose and tune a periodic reorder rule for one stage of a chain that orders from the stage above it every week: a store ordering from a distributor, a distributor from a manufacturer, or to show a team why order swings grow up the chain.
+
+| It assumes | If yours differs |
+|---|---|
+| A serial chain of four stages and one product; each stage orders from the one above, and the factory produces. | With several suppliers or customers per stage, the bullwhip still builds but the numbers will differ. Use the tool for the main supply route only. |
+| The other three stages follow plain order-up-to. | Real partners may anchor or panic like Sterman's players; the Play mode's anchoring bot shows how much worse that gets. The Compare costs are then optimistic. |
+| Order and shipping delays are fixed and known. | Delays that vary need extra safety stock the formula does not add. Use your longer, typical delay as a first cut. |
+| Costs are per unit per week (holding and shortage); no fixed cost per order. | With a large cost per order, you will want to order in batches: an (s, S) or economic-order-quantity rule fits better. |
+| The factory has unlimited capacity, and stock does not spoil. | If the factory is capacity-bound, its queue adds delay the tool ignores; for perishable stock, see the Order Quantity Planner. |
+| Each stage forecasts with a moving average of the orders it receives (or of customer demand when demand is shared). | Exponential smoothing or a planner's judgment changes the bullwhip; the forecast-window check shows how sensitive the answer is. |
+| The comparison runs 36 weeks on one of five demand patterns or your pasted series. | Rare events longer than 36 weeks are not tested. Paste a longer series to test your own path. |
+
+Do not use it for one-off orders of seasonal or perishable goods (use the Order Quantity Planner), for multi-echelon networks with many locations (use a supply-chain planning system), or for production scheduling at a capacity-bound factory.
+
+## Where it comes from, and how it was generalised
+
+The tool comes out of the Beer Game, the four-stage ordering game from MIT in which demand steps up once and orders swing wildly up the chain (Sterman, 1989), and the research that explained it: forecasting from received orders drives the bullwhip (Lee, Padmanabhan and Whang, 1997), and its size grows with lead time and shrinks with a longer forecast window (Chen, Drezner, Ryan and Simchi-Levi, 2000).
+
+Experiments on this repository's Python engine ([results/summary.md](https://github.com/omidgolchin/ordering-policy-tester/blob/main/results/summary.md)) shaped the tool. The classic game's opening stock, not the rules, caused most of the bullwhip first measured, so the chain now opens in steady state. Sharing customer demand cut the factory's bullwhip from ×15.4 to ×4.0. Four anchoring players ran up $1,766 of chain cost against $834 for four order-up-to stages. The forecast window moved the factory's bullwhip more than the choice of rule did (×65 with a 4-week window, ×15 with 8, ×8 with 16, against a factor of about two between rules).
+
+**How it was generalised.** The game fixes one demand step, one cost pair and four human players. The tool keeps the game as the Play mode, and in Compare turns the game's fixed settings into your inputs (stage, delays, costs, backlog or lost sales, service level, forecast window, demand pattern or your own series), with three textbook rules scored on the same demand.
 
 ## Research notes
 
