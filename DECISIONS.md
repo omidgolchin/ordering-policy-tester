@@ -100,5 +100,19 @@ listed here.
   the two. On a game with a demand step the higher level often wins,
   because the forecast lags; the check says so rather than assuming
   the textbook ratio is always right.
+- **95% stays the default; "Balanced to my costs" is opt-in.** The
+  page opens on the classic game, whose textbook setting is 95%, and
+  the opening example and every headline figure are computed at it.
+  Balanced sits first in the select and the hint recommends it once
+  the costs are the visitor's own, but as the default it would set the
+  target from the placeholder costs ($0.50 holding, $1.00 shortage,
+  a 67% level) before a first-time visitor has typed anything, and it
+  would move the classic-game numbers on the page, in the README
+  and in results/. Verified end to end against the live
+  page on 2026-11-18 (PM review item OP-D1): the option and the auto
+  branch were already in the page from the kit rebuild; what was
+  missing was a test, and tests/test_service_level.py now pins the
+  option's presence in the select and the level the branch computes,
+  so the checks cannot recommend an option that is not there.
 - **Requirements are pytest only.** The engine is pure Python (no
   NumPy/SciPy), so the fresh-venv install stays small and honest.
