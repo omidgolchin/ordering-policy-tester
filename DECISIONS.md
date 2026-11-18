@@ -116,3 +116,17 @@ listed here.
   so the checks cannot recommend an option that is not there.
 - **Requirements are pytest only.** The engine is pure Python (no
   NumPy/SciPy), so the fresh-venv install stays small and honest.
+
+## 2026-11-18: what a screen reader announces
+
+- Only the verdict title is announced. The whole verdict panel used to
+  be one `aria-live` region, and its KPI tiles and checks are rewritten
+  on every run, so a screen reader read them all again after each pause
+  in typing. Now the title alone carries `aria-live="polite"` and
+  `aria-atomic="true"`: a changed verdict is announced in full, and the
+  KPIs and checks stay on the page for the reader to move to. The title
+  is written only when its text changes, so an unchanged verdict is not
+  read out again. The ordering game panel had the same problem every
+  week (the stage grid and the log were re-read), so there the turn
+  summary, the status line and the end-of-game result are the live
+  regions, and an invalid order is announced as an alert.

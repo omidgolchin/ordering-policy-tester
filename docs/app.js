@@ -5,6 +5,10 @@
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
+  /* Live regions (the verdict title) are written only when their text
+   * changes, so a screen reader does not announce an unchanged verdict
+   * again after every pause in typing. */
+  var setLive = function (el, s) { s = String(s); if (el.textContent !== s) el.textContent = s; };
   function openDetails(id) { var d = document.getElementById(id); if (d && d.tagName === "DETAILS") { d.open = true; d.scrollIntoView({ block: "start" }); var su = d.querySelector("summary"); if (su) su.focus(); } }
   document.querySelectorAll("a.open-details").forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); openDetails(a.getAttribute("href").slice(1)); }); });
   if (location.hash === "#fit" || location.hash === "#origin") openDetails(location.hash.slice(1));
@@ -214,7 +218,7 @@
     var panel = $("verdictPanel");
     panel.className = "panel verdict v-bad";
     $("vKicker").textContent = "Check your settings";
-    $("vTitle").textContent = "The verdict needs " + problems[0] + ".";
+    setLive($("vTitle"), "The verdict needs " + problems[0] + ".");
     $("vBody").textContent = "Fix the highlighted settings and the verdict comes back. Nothing is simulated with impossible inputs.";
     $("vKpis").innerHTML = "";
     $("vChecks").innerHTML = "";
@@ -229,11 +233,11 @@
     var panel = $("verdictPanel");
     panel.className = "panel verdict v-" + rec.cls;
     $("vKicker").textContent = "Recommended rule · " + stageName.toLowerCase() + " · " + nWeeks + " weeks";
-    $("vTitle").textContent = ruleTitle(rec.rule, ev);
+    setLive($("vTitle"), ruleTitle(rec.rule, ev));
 
     var steady = R.yourCost === 0 && ev.rules.pass.yourCost === 0 && ev.rules.out.yourCost === 0;
     if (steady) {
-      $("vTitle").textContent = "Any rule works: demand never moves";
+      setLive($("vTitle"), "Any rule works: demand never moves");
       $("vBody").textContent = "The chain opens in steady state and steady demand keeps it there, so every rule orders exactly what is sold and costs nothing. Pick a demand pattern that moves to see the rules differ.";
       panel.className = "panel verdict v-neutral";
     }
@@ -499,7 +503,7 @@
   function startGame() {
     var inp = readInputs();
     if (inp.problems.length) {
-      $("playStatus").textContent = "The Compare settings need fixing first (" + inp.problems[0] + "). Switch to Compare rules, fix the highlighted settings, then start again.";
+      setLive($("playStatus"), "The Compare settings need fixing first (" + inp.problems[0] + "). Switch to Compare rules, fix the highlighted settings, then start again.");
       return;
     }
     var bp = playBotPolicies();
@@ -542,7 +546,7 @@
       " " + pipeline + " units are on their way to you. Your running cost: " + money(st.cost[role]) + "." +
       " The order-up-to rule would order <strong>" + play.suggestion + "</strong>.";
     $("playOrder").value = play.suggestion;
-    $("playStatus").textContent = "Your move: place this week's order.";
+    setLive($("playStatus"), "Your move: place this week's order.");
     $("playOrder").focus();
   }
 
@@ -631,7 +635,7 @@
       '<div class="kpi"><span class="k-val">' + money(best.cost) + '</span><span class="k-lbl">Best rule</span></div>' +
       '<div class="kpi"><span class="k-val">' + bw(yourBw) + '</span><span class="k-lbl">Your bullwhip <button type="button" data-tip="bullwhip"></button></span></div>' +
       '<div class="kpi"><span class="k-val">' + pct(fill) + '</span><span class="k-lbl">Orders filled <button type="button" data-tip="fill"></button></span></div></div></div>';
-    $("playStatus").textContent = "Game over. Start a new game to try another role, other teammates, or another demand pattern.";
+    setLive($("playStatus"), "Game over. Start a new game to try another role, other teammates, or another demand pattern.");
     play.preview = null;
   }
 

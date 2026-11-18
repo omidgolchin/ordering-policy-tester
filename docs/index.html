@@ -131,9 +131,9 @@
       </form>
 
       <div>
-        <section class="panel verdict" id="verdictPanel" aria-live="polite">
+        <section class="panel verdict" id="verdictPanel">
           <p class="v-kicker" id="vKicker">Recommended rule</p>
-          <p class="v-title" id="vTitle">Working it out…</p>
+          <p class="v-title" id="vTitle" aria-live="polite" aria-atomic="true">Working it out…</p>
           <p class="v-body" id="vBody"></p>
           <div class="kpis" id="vKpis"></div>
           <div class="checks" id="vChecks"></div>
@@ -224,13 +224,13 @@
       </form>
 
       <div>
-      <section class="panel" id="playPanel" aria-live="polite">
+      <section class="panel" id="playPanel">
         <h2 id="playTitle">The ordering game</h2>
         <p class="small muted" id="playRules" hidden style="margin-top:0"></p>
-        <p id="playStatus">Pick your role and teammates, then start. You will place one order a week for 36 weeks; at the end, your cost and bullwhip ratio are set next to the best rule's on the same demand.</p>
+        <p id="playStatus" aria-live="polite">Pick your role and teammates, then start. You will place one order a week for 36 weeks; at the end, your cost and bullwhip ratio are set next to the best rule's on the same demand.</p>
         <div class="stage-grid" id="playStages"></div>
         <div class="play-turn" id="playTurn" hidden>
-          <p id="playTurnText"></p>
+          <p id="playTurnText" aria-live="polite"></p>
           <div class="play-order-row">
             <div class="field">
               <label for="playOrder">Your order this week</label>
@@ -238,9 +238,9 @@
             </div>
             <button type="button" class="primary" id="playSubmit">Place order</button>
           </div>
-          <p class="err" id="playErr" hidden></p>
+          <p class="err" id="playErr" role="alert" hidden></p>
         </div>
-        <div id="playEnd"></div>
+        <div id="playEnd" aria-live="polite"></div>
         <p class="hint" id="playLog"></p>
       </section>
 
